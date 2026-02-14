@@ -10,35 +10,71 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.5.0/Recharts.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0f172a; color: #fff; font-family: system-ui, sans-serif; min-height: 100vh; }
-  input, select, textarea, button { font-family: inherit; }
-  input[type=range] { width: 100%; cursor: pointer; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { background: #0f172a; color: #fff; font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; min-height: 100dvh; overscroll-behavior: none; }
+  input, select, textarea, button { font-family: inherit; -webkit-appearance: none; }
+  input[type=date], input[type=time] { color-scheme: dark; }
+  input[type=range] { width: 100%; cursor: pointer; height: 6px; }
   input[type=range].accent-indigo { accent-color: #6366f1; }
   input[type=range].accent-yellow { accent-color: #fbbf24; }
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: #1e293b; }
   ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-  .inp { width:100%; background:#1e293b; border:1px solid #475569; border-radius:8px; padding:8px 12px; color:#fff; font-size:0.875rem; outline:none; }
+
+  /* Inputs */
+  .inp { width:100%; background:#1e293b; border:1px solid #475569; border-radius:10px; padding:12px 14px; color:#fff; font-size:1rem; outline:none; transition:border-color 0.15s; }
   .inp:focus { border-color:#818cf8; }
-  .sel { width:100%; background:#1e293b; border:1px solid #475569; border-radius:8px; padding:8px 12px; color:#fff; font-size:0.875rem; outline:none; }
-  .lbl { display:block; color:#cbd5e1; font-size:0.75rem; margin-bottom:4px; font-weight:500; }
-  .btn-primary { width:100%; padding:10px; border-radius:12px; font-weight:700; color:#fff; border:none; cursor:pointer; font-size:0.875rem; background:linear-gradient(to right,#4f46e5,#7c3aed); transition:opacity 0.15s; }
-  .btn-primary:hover { opacity:0.9; }
-  .btn-outline { background:none; border:1px solid #475569; color:#94a3b8; border-radius:8px; padding:4px 12px; font-size:0.75rem; cursor:pointer; transition:color 0.15s; }
-  .btn-outline:hover { color:#fff; }
-  .tab-btn { flex-shrink:0; padding:12px; font-size:0.75rem; font-weight:500; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; color:#94a3b8; transition:color 0.15s; }
-  .tab-btn.active { color:#818cf8; border-bottom-color:#818cf8; }
-  .card { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:16px; }
-  .stat-card { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:16px; text-align:center; }
-  .mini-card { background:#334155; border-radius:8px; padding:8px; text-align:center; }
+  .sel { width:100%; background:#1e293b; border:1px solid #475569; border-radius:10px; padding:12px 14px; color:#fff; font-size:1rem; outline:none; }
+  .lbl { display:block; color:#cbd5e1; font-size:0.8rem; margin-bottom:6px; font-weight:500; }
+
+  /* Buttons */
+  .btn-primary { width:100%; padding:14px; border-radius:12px; font-weight:700; color:#fff; border:none; cursor:pointer; font-size:1rem; background:linear-gradient(to right,#4f46e5,#7c3aed); transition:opacity 0.15s; -webkit-tap-highlight-color:transparent; }
+  .btn-primary:active { opacity:0.85; }
+  .btn-outline { background:none; border:1px solid #475569; color:#94a3b8; border-radius:8px; padding:6px 12px; font-size:0.75rem; cursor:pointer; transition:color 0.15s; -webkit-tap-highlight-color:transparent; white-space:nowrap; }
+  .btn-outline:active { color:#fff; }
+
+  /* Bottom tab bar */
+  .tab-bar { display:flex; border-top:1px solid #1e293b; background:#0a0f1e; position:fixed; bottom:0; left:0; right:0; z-index:40; padding-bottom:env(safe-area-inset-bottom); }
+  .tab-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px 4px; font-size:0.6rem; font-weight:500; background:none; border:none; cursor:pointer; color:#475569; transition:color 0.15s; -webkit-tap-highlight-color:transparent; gap:3px; }
+  .tab-btn .tab-icon { font-size:1.3rem; line-height:1; }
+  .tab-btn .tab-label { line-height:1; }
+  .tab-btn.active { color:#818cf8; }
+
+  /* Header */
+  .grad-header { background:linear-gradient(to right,#1e1b4b,#4c1d95,#0f172a); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:30; }
+  .grad-admin  { background:linear-gradient(to right,#4a1d96,#1e1b4b,#0f172a); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:30; }
+
+  /* Cards */
+  .card { background:#1e293b; border:1px solid #334155; border-radius:14px; padding:16px; }
+  .stat-card { background:#1e293b; border:1px solid #334155; border-radius:14px; padding:16px; text-align:center; }
+  .mini-card { background:#334155; border-radius:10px; padding:10px 6px; text-align:center; }
+
+  /* Spacing */
   .space-y-2>*+* { margin-top:8px; }
   .space-y-3>*+* { margin-top:12px; }
   .space-y-4>*+* { margin-top:16px; }
   .space-y-5>*+* { margin-top:20px; }
-  .grad-header { background:linear-gradient(to right,#1e1b4b,#4c1d95,#0f172a); }
-  .grad-admin  { background:linear-gradient(to right,#4a1d96,#1e1b4b,#0f172a); }
-  .spinner { border:3px solid #334155; border-top-color:#6366f1; border-radius:50%; width:32px; height:32px; animation:spin 0.7s linear infinite; margin:40px auto; }
+
+  /* Content area — padded for fixed bottom tab bar */
+  .content { padding:16px 16px 90px; max-width:672px; margin:0 auto; }
+
+  /* Auth screen */
+  .auth-wrap { min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 16px; }
+
+  /* Spinner */
+  .spinner { border:3px solid #334155; border-top-color:#6366f1; border-radius:50%; width:36px; height:36px; animation:spin 0.7s linear infinite; margin:48px auto; }
   @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Footer */
+  .footer { text-align:center; padding:16px; color:#334155; font-size:0.68rem; margin-top:8px; }
+
+  /* Modal */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:flex-end; justify-content:center; z-index:50; padding:0; }
+  .modal-box { background:#1e293b; border:1px solid #334155; border-radius:20px 20px 0 0; padding:24px 20px calc(24px + env(safe-area-inset-bottom)); width:100%; max-width:480px; }
+  @media (min-width: 600px) {
+    .modal-overlay { align-items:center; padding:16px; }
+    .modal-box { border-radius:20px; padding:24px; }
+  }
 </style>
 </head>
 <body>
@@ -102,6 +138,20 @@ const genInsights = entries => {
   return msgs;
 };
 
+// ── Tab bar config ────────────────────────────────────────────────────────────
+const STUDENT_TABS = [["log","📝","Log"],["history","📅","History"],["charts","📊","Charts"],["insights","💡","Insights"],["tips","🌿","Tips"]];
+const ADMIN_TABS   = [["overview","📊","Overview"],["rankings","🏆","Rankings"],["compare","👥","Compare"],["students","📋","Students"]];
+
+const TabBar = ({ tabs, active, onChange }) =>
+  React.createElement("nav", { className:"tab-bar" },
+    tabs.map(([k,icon,label]) =>
+      React.createElement("button", { key:k, className:"tab-btn"+(active===k?" active":""), onClick:()=>onChange(k) },
+        React.createElement("span", { className:"tab-icon" }, icon),
+        React.createElement("span", { className:"tab-label" }, label)
+      )
+    )
+  );
+
 // ── AuthScreen ────────────────────────────────────────────────────────────────
 function AuthScreen({ onLogin }) {
   const [mode, setMode] = useState("login");
@@ -151,7 +201,7 @@ function AuthScreen({ onLogin }) {
   };
 
   const E = React.createElement;
-  return E("div", { style:{minHeight:"100vh",background:"#0f172a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"16px"} },
+  return E("div", { className:"auth-wrap" },
     E("div", { style:{fontSize:"3rem",marginBottom:"8px"} }, "🌙"),
     E("h1",  { style:{fontSize:"1.5rem",fontWeight:700,color:"#fff",marginBottom:"4px"} }, "Digital Sleep Diary"),
     E("p",   { style:{color:"#94a3b8",fontSize:"0.875rem",marginBottom:"24px"} }, "Track sleep · screen time · morning energy"),
@@ -218,17 +268,17 @@ function ChangePasswordModal({ token, onClose }) {
       setOk("Password changed!"); setTimeout(onClose, 1500);
     } catch(e) { setErr(e.message); } finally { setLoading(false); }
   };
-  return E("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"16px"}},
-    E("div",{className:"card",style:{width:"100%",maxWidth:"384px"}},
-      E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}},
-        E("span",{style:{color:"#fff",fontWeight:600}},"🔑 Change Password"),
-        E("button",{onClick:onClose,style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.5rem"}},"×")
+  return E("div",{className:"modal-overlay"},
+    E("div",{className:"modal-box"},
+      E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"20px"}},
+        E("span",{style:{color:"#fff",fontWeight:700,fontSize:"1rem"}},"🔑 Change Password"),
+        E("button",{onClick:onClose,style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.5rem",padding:"4px"}},"×")
       ),
-      E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Current Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.current,onChange:e=>setForm(f=>({...f,current:e.target.value}))})),
-      E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
-      E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Confirm New Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
-      err && E("p",{style:{color:"#f87171",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},err),
-      ok  && E("p",{style:{color:"#4ade80",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},ok),
+      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Current Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.current,onChange:e=>setForm(f=>({...f,current:e.target.value}))})),
+      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
+      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Confirm New Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
+      err && E("p",{style:{color:"#f87171",fontSize:"0.8rem",textAlign:"center",marginBottom:"10px"}},err),
+      ok  && E("p",{style:{color:"#4ade80",fontSize:"0.8rem",textAlign:"center",marginBottom:"10px"}},ok),
       E("button",{className:"btn-primary",onClick:handle,disabled:loading}, loading?"Saving...":"Save Changes")
     )
   );
@@ -248,17 +298,17 @@ function AdminResetModal({ username, token, onClose }) {
       setOk("Password reset!"); setTimeout(onClose, 1500);
     } catch(e) { setErr(e.message); } finally { setLoading(false); }
   };
-  return E("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"16px"}},
-    E("div",{className:"card",style:{width:"100%",maxWidth:"384px"}},
-      E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}},
-        E("span",{style:{color:"#fff",fontWeight:600}},"🔑 Reset — @"+username),
-        E("button",{onClick:onClose,style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.5rem"}},"×")
+  return E("div",{className:"modal-overlay"},
+    E("div",{className:"modal-box"},
+      E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"20px"}},
+        E("span",{style:{color:"#fff",fontWeight:700,fontSize:"1rem"}},"🔑 Reset — @"+username),
+        E("button",{onClick:onClose,style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.5rem",padding:"4px"}},"×")
       ),
-      E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
-      E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
-      err && E("p",{style:{color:"#f87171",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},err),
-      ok  && E("p",{style:{color:"#4ade80",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},ok),
-      E("button",{onClick:handle,disabled:loading,style:{width:"100%",padding:"10px",borderRadius:"12px",fontWeight:700,color:"#fff",border:"none",cursor:"pointer",background:"linear-gradient(to right,#dc2626,#ea580c)"}}, loading?"Resetting...":"Reset Password")
+      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
+      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
+      err && E("p",{style:{color:"#f87171",fontSize:"0.8rem",textAlign:"center",marginBottom:"10px"}},err),
+      ok  && E("p",{style:{color:"#4ade80",fontSize:"0.8rem",textAlign:"center",marginBottom:"10px"}},ok),
+      E("button",{onClick:handle,disabled:loading,style:{width:"100%",padding:"14px",borderRadius:"12px",fontWeight:700,color:"#fff",border:"none",cursor:"pointer",fontSize:"1rem",background:"linear-gradient(to right,#dc2626,#ea580c)"}}, loading?"Resetting...":"Reset Password")
     )
   );
 }
@@ -297,22 +347,19 @@ function StudentApp({ user }) {
   const chartData = weekly.map(e => ({ name:fmt(e.date), Sleep:e.duration, Screen:e.screen_time, Energy:e.energy }));
   const TABS = [["log","📝 Log"],["history","📅 History"],["charts","📊 Charts"],["insights","💡 Insights"],["tips","🌿 Tips"]];
 
-  return E("div", { style:{minHeight:"100vh",background:"#0f172a"} },
+  return E("div", { style:{minHeight:"100dvh",background:"#0f172a"} },
     showPw && E(ChangePasswordModal, { token:user.token, onClose:()=>setShowPw(false) }),
-    E("div", { className:"grad-header", style:{padding:"16px",display:"flex",alignItems:"center",justifyContent:"space-between"} },
+    E("div", { className:"grad-header" },
       E("div", null,
-        E("div", {style:{fontSize:"1.25rem",fontWeight:700,color:"#fff"}}, "🌙 Sleep Diary"),
+        E("div", {style:{fontSize:"1.1rem",fontWeight:700,color:"#fff"}}, "🌙 Sleep Diary"),
         E("div", {style:{color:"#94a3b8",fontSize:"0.75rem"}}, "@"+user.username)
       ),
       E("div", {style:{display:"flex",gap:"8px"}},
-        E("button", {className:"btn-outline",onClick:()=>setShowPw(true)}, "🔑 Password"),
+        E("button", {className:"btn-outline",onClick:()=>setShowPw(true)}, "🔑"),
         E("button", {className:"btn-outline",onClick:user.logout}, "Logout")
       )
     ),
-    E("div", {style:{display:"flex",borderBottom:"1px solid #334155",background:"#0f172a",overflowX:"auto"}},
-      TABS.map(([k,l]) => E("button", {key:k, className:"tab-btn"+(tab===k?" active":""), onClick:()=>setTab(k)}, l))
-    ),
-    E("div", {style:{padding:"16px",maxWidth:"672px",margin:"0 auto"}},
+    E("div", {className:"content"},
       loading && E("div", {className:"spinner"}),
       !loading && E(React.Fragment, null,
 
@@ -404,13 +451,14 @@ function StudentApp({ user }) {
           TIPS.map((t,i) => E("div",{key:i,className:"card",style:{display:"flex",gap:"12px"}},
             E("span",{style:{fontSize:"1.5rem"}}, t.icon),
             E("div",null,
-              E("h3",{style:{color:"#fff",fontWeight:600,fontSize:"0.875rem"}}, t.title),
-              E("p",{style:{color:"#94a3b8",fontSize:"0.75rem",marginTop:"4px",lineHeight:1.625}}, t.text)
+              E("h3",{style:{color:"#fff",fontWeight:600,fontSize:"0.9rem"}}, t.title),
+              E("p",{style:{color:"#94a3b8",fontSize:"0.8rem",marginTop:"4px",lineHeight:1.625}}, t.text)
             )
           ))
         )
       )
-    )
+    ),
+    E(TabBar, { tabs:STUDENT_TABS, active:tab, onChange:setTab })
   );
 }
 
@@ -569,20 +617,21 @@ function AdminApp({ user }) {
               E("span",{style:{color:"#fff",fontWeight:600}}, "@"+u.username),
               E("div",{style:{display:"flex",alignItems:"center",gap:"8px"}},
                 E("span",{style:{color:"#94a3b8",fontSize:"0.75rem"}}, u.entries.length+" log"+(u.entries.length!==1?"s":"")),
-                E("button",{onClick:()=>setResetUser(u.username),style:{fontSize:"0.75rem",color:"#fb923c",border:"1px solid #9a3412",background:"none",borderRadius:"4px",padding:"2px 8px",cursor:"pointer"}}, "🔑 Reset PW")
+                E("button",{onClick:()=>setResetUser(u.username),style:{fontSize:"0.75rem",color:"#fb923c",border:"1px solid #9a3412",background:"none",borderRadius:"6px",padding:"4px 10px",cursor:"pointer"}}, "🔑 Reset")
               )
             ),
             u.entries.length>0
               ? E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}},
-                  E("div",{className:"mini-card"}, E("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"0.875rem"}},avg(u.entries.map(e=>e.duration))+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Avg Sleep")),
-                  E("div",{className:"mini-card"}, E("div",{style:{color:"#facc15",fontWeight:700,fontSize:"0.875rem"}},avg(u.entries.map(e=>e.energy))+"/10"), E("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Avg Energy")),
-                  E("div",{className:"mini-card"}, E("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"0.875rem"}},avg(u.entries.map(e=>e.screen_time))+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Avg Screen"))
+                  E("div",{className:"mini-card"}, E("div",{style:{color:"#a5b4fc",fontWeight:700}},avg(u.entries.map(e=>e.duration))+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.7rem"}},"Avg Sleep")),
+                  E("div",{className:"mini-card"}, E("div",{style:{color:"#facc15",fontWeight:700}},avg(u.entries.map(e=>e.energy))+"/10"), E("div",{style:{color:"#94a3b8",fontSize:"0.7rem"}},"Avg Energy")),
+                  E("div",{className:"mini-card"}, E("div",{style:{color:"#d8b4fe",fontWeight:700}},avg(u.entries.map(e=>e.screen_time))+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.7rem"}},"Avg Screen"))
                 )
               : E("p",{style:{color:"#64748b",fontSize:"0.75rem"}}, "No entries yet.")
           ))
         )
       )
-    )
+    ),
+    E(TabBar, { tabs:ADMIN_TABS, active:tab, onChange:setTab })
   );
 }
 
@@ -605,6 +654,17 @@ function App() {
   if (user.isAdmin) return React.createElement(AdminApp,    { user:u });
   return React.createElement(StudentApp, { user:u });
 }
+
+const Footer = () => React.createElement("div", { className:"footer" }, "Desenvolvido por: José Paulo Tavares");
+
+const _AuthScreen = AuthScreen;
+AuthScreen = (props) => React.createElement(React.Fragment, null, React.createElement(_AuthScreen, props), React.createElement(Footer));
+
+const _StudentApp = StudentApp;
+StudentApp = (props) => React.createElement(React.Fragment, null, React.createElement(_StudentApp, props), React.createElement(Footer));
+
+const _AdminApp = AdminApp;
+AdminApp = (props) => React.createElement(React.Fragment, null, React.createElement(_AdminApp, props), React.createElement(Footer));
 
 ReactDOM.render(React.createElement(App), document.getElementById("root"));
 </script>
