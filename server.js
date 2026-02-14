@@ -1,9 +1,9 @@
-const express  = require("express");
-const bcrypt   = require("bcryptjs");
-const jwt      = require("jsonwebtoken");
-const cors     = require("cors");
-const path     = require("path");
-const { stmts } = require("./database");
+const express = require("express");
+const bcrypt  = require("bcryptjs");
+const jwt     = require("jsonwebtoken");
+const cors    = require("cors");
+const path    = require("path");
+const { ready } = require("./database");
 
 const app    = express();
 const PORT   = process.env.PORT || 3000;
@@ -12,6 +12,15 @@ const SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+
+// ── Wait for DB before handling requests ──────────────────────────────────────
+let db;
+ready.then(d => { db = d; console.log("✅ Database ready"); });
+
+const dbReady = (req, res, next) => {
+  if (!db) return res.status(503).json({ error: "Database not ready yet. Try again in a moment." });
+  next();
+};
 
 // ── Auth middleware ────────────────────────────────────────────────────────────
 const auth = (req, res, next) => {
@@ -26,7 +35,6 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
-// ── Security questions ─────────────────────────────────────────────────────────
 const SECURITY_QUESTIONS = [
   "What was the name of your first pet?",
   "What is your mother's maiden name?",
@@ -38,7 +46,7 @@ const SECURITY_QUESTIONS = [
 // ── Auth routes ────────────────────────────────────────────────────────────────
 
 // POST /api/register
-app.post("/api/register", (req, res) => {
+app.post("/api/register", dbReady, (req, res) => {
   try {
     const { username, password, secQ, secA } = req.body;
     if (!username || !password || secA === undefined || secQ === undefined)
@@ -47,21 +55,23 @@ app.post("/api/register", (req, res) => {
       return res.status(400).json({ error: "Username not allowed." });
     if (password.length < 4)
       return res.status(400).json({ error: "Password must be at least 4 characters." });
-    const exists = stmts.findUser.get(username.toLowerCase());
-    if (exists) return res.status(409).json({ error: "Username already taken." });
-    const hash   = bcrypt.hashSync(password, 10);
-    const result = stmts.createUser.run(username.toLowerCase(), hash, +secQ, secA.trim().toLowerCase());
-    const token  = jwt.sign({ id: result.lastInsertRowid, username: username.toLowerCase(), isAdmin: false }, SECRET, { expiresIn: "7d" });
+    if (db.get("SELECT id FROM users WHERE username = ?", [username.toLowerCase()]))
+      return res.status(409).json({ error: "Username already taken." });
+    const hash = bcrypt.hashSync(password, 10);
+    db.run("INSERT INTO users (username, password, sec_q, sec_a) VALUES (?, ?, ?, ?)",
+      [username.toLowerCase(), hash, +secQ, secA.trim().toLowerCase()]);
+    const id = db.lastId();
+    const token = jwt.sign({ id, username: username.toLowerCase(), isAdmin: false }, SECRET, { expiresIn: "7d" });
     res.json({ token, username: username.toLowerCase(), isAdmin: false });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/login
-app.post("/api/login", (req, res) => {
+app.post("/api/login", dbReady, (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: "Missing fields." });
-    const user = stmts.findUser.get(username.toLowerCase());
+    const user = db.get("SELECT * FROM users WHERE username = ?", [username.toLowerCase()]);
     if (!user) return res.status(401).json({ error: "User not found." });
     if (!bcrypt.compareSync(password, user.password))
       return res.status(401).json({ error: "Wrong password." });
@@ -71,11 +81,11 @@ app.post("/api/login", (req, res) => {
 });
 
 // POST /api/recover/question
-app.post("/api/recover/question", (req, res) => {
+app.post("/api/recover/question", dbReady, (req, res) => {
   try {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: "Missing username." });
-    const user = stmts.findUser.get(username.toLowerCase());
+    const user = db.get("SELECT * FROM users WHERE username = ?", [username.toLowerCase()]);
     if (!user || user.is_admin) return res.status(404).json({ error: "User not found." });
     if (!user.sec_a) return res.status(404).json({ error: "No security question set." });
     res.json({ question: SECURITY_QUESTIONS[user.sec_q] });
@@ -83,30 +93,32 @@ app.post("/api/recover/question", (req, res) => {
 });
 
 // POST /api/recover/verify
-app.post("/api/recover/verify", (req, res) => {
+app.post("/api/recover/verify", dbReady, (req, res) => {
   try {
     const { username, answer, newPassword } = req.body;
     if (!username || !answer || !newPassword) return res.status(400).json({ error: "Missing fields." });
-    if (newPassword.length < 4) return res.status(400).json({ error: "Password must be at least 4 characters." });
-    const user = stmts.findUser.get(username.toLowerCase());
+    if (newPassword.length < 4) return res.status(400).json({ error: "Min. 4 characters." });
+    const user = db.get("SELECT * FROM users WHERE username = ?", [username.toLowerCase()]);
     if (!user || user.is_admin) return res.status(404).json({ error: "User not found." });
     if (answer.trim().toLowerCase() !== user.sec_a)
       return res.status(401).json({ error: "Incorrect answer." });
-    stmts.updatePassword.run(bcrypt.hashSync(newPassword, 10), user.username);
+    db.run("UPDATE users SET password = ? WHERE username = ?",
+      [bcrypt.hashSync(newPassword, 10), user.username]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/change-password
-app.post("/api/change-password", auth, (req, res) => {
+app.post("/api/change-password", dbReady, auth, (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return res.status(400).json({ error: "Missing fields." });
     if (newPassword.length < 4) return res.status(400).json({ error: "Min. 4 characters." });
-    const user = stmts.findUserById.get(req.user.id);
+    const user = db.get("SELECT * FROM users WHERE id = ?", [req.user.id]);
     if (!bcrypt.compareSync(currentPassword, user.password))
       return res.status(401).json({ error: "Current password is incorrect." });
-    stmts.updatePassword.run(bcrypt.hashSync(newPassword, 10), user.username);
+    db.run("UPDATE users SET password = ? WHERE id = ?",
+      [bcrypt.hashSync(newPassword, 10), req.user.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -114,47 +126,60 @@ app.post("/api/change-password", auth, (req, res) => {
 // ── Entry routes ───────────────────────────────────────────────────────────────
 
 // GET /api/entries
-app.get("/api/entries", auth, (req, res) => {
-  try { res.json(stmts.getUserEntries.all(req.user.id)); }
+app.get("/api/entries", dbReady, auth, (req, res) => {
+  try { res.json(db.all("SELECT * FROM entries WHERE user_id = ? ORDER BY date DESC", [req.user.id])); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/entries
-app.post("/api/entries", auth, (req, res) => {
+app.post("/api/entries", dbReady, auth, (req, res) => {
   try {
     const { date, bedTime, wakeTime, duration, screenTime, energy, notes } = req.body;
     if (!date || !bedTime || !wakeTime || duration == null || screenTime == null || energy == null)
       return res.status(400).json({ error: "Missing fields." });
-    stmts.upsertEntry.run(req.user.id, date, bedTime, wakeTime, duration, screenTime, energy, notes || "");
+    db.run(`
+      INSERT INTO entries (user_id, date, bed_time, wake_time, duration, screen_time, energy, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, date) DO UPDATE SET
+        bed_time = excluded.bed_time, wake_time = excluded.wake_time,
+        duration = excluded.duration, screen_time = excluded.screen_time,
+        energy = excluded.energy, notes = excluded.notes`,
+      [req.user.id, date, bedTime, wakeTime, duration, screenTime, energy, notes || ""]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // DELETE /api/entries/:id
-app.delete("/api/entries/:id", auth, (req, res) => {
-  try { stmts.deleteEntry.run(+req.params.id, req.user.id); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+app.delete("/api/entries/:id", dbReady, auth, (req, res) => {
+  try {
+    db.run("DELETE FROM entries WHERE id = ? AND user_id = ?", [+req.params.id, req.user.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── Admin routes ───────────────────────────────────────────────────────────────
 
 // GET /api/admin/users
-app.get("/api/admin/users", auth, adminOnly, (req, res) => {
+app.get("/api/admin/users", dbReady, auth, adminOnly, (req, res) => {
   try {
-    const users = stmts.listUsers.all();
-    res.json(users.map(u => ({ ...u, entries: stmts.entriesByUser.all(u.id) })));
+    const users = db.all("SELECT id, username, created_at FROM users WHERE is_admin = 0");
+    res.json(users.map(u => ({
+      ...u,
+      entries: db.all("SELECT * FROM entries WHERE user_id = ? ORDER BY date DESC", [u.id])
+    })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/admin/reset-password
-app.post("/api/admin/reset-password", auth, adminOnly, (req, res) => {
+app.post("/api/admin/reset-password", dbReady, auth, adminOnly, (req, res) => {
   try {
     const { username, newPassword } = req.body;
     if (!username || !newPassword) return res.status(400).json({ error: "Missing fields." });
     if (newPassword.length < 4) return res.status(400).json({ error: "Min. 4 characters." });
-    const user = stmts.findUser.get(username.toLowerCase());
+    const user = db.get("SELECT id FROM users WHERE username = ?", [username.toLowerCase()]);
     if (!user) return res.status(404).json({ error: "User not found." });
-    stmts.updatePassword.run(bcrypt.hashSync(newPassword, 10), user.username);
+    db.run("UPDATE users SET password = ? WHERE username = ?",
+      [bcrypt.hashSync(newPassword, 10), username.toLowerCase()]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
