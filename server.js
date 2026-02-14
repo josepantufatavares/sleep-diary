@@ -15,7 +15,12 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // ── Wait for DB ───────────────────────────────────────────────────────────────
 let db;
-ready.then(d => { db = d; }).catch(e => { console.error("❌ DB init failed:", e.message); process.exit(1); });
+ready.then(d => { db = d; }).catch(e => {
+  console.error("❌ DB init failed:", e.message);
+  console.error("❌ Full error:", JSON.stringify(e, null, 2));
+  console.error("❌ DATABASE_URL defined:", !!process.env.DATABASE_URL);
+  process.exit(1);
+});
 
 const dbReady = (req, res, next) => {
   if (!db) return res.status(503).json({ error: "Database not ready. Try again." });
