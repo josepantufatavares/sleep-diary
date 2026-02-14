@@ -69,6 +69,11 @@ const ready = (async () => {
 
   console.log("✅ PostgreSQL database ready.");
   return { run, all, get };
+  } catch (e) {
+    console.error("❌ DB setup error:", e.message);
+    console.error("❌ Stack:", e.stack);
+    throw e;
+  }
 })();
 
 module.exports = { ready };
