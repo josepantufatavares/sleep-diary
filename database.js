@@ -1,6 +1,18 @@
 const { createClient } = require("@libsql/client");
 const bcrypt = require("bcryptjs");
 
+// ── Validate env vars ─────────────────────────────────────────────────────────
+if (!process.env.TURSO_DATABASE_URL) {
+  console.error("❌ TURSO_DATABASE_URL environment variable is not set!");
+  process.exit(1);
+}
+if (!process.env.TURSO_AUTH_TOKEN) {
+  console.error("❌ TURSO_AUTH_TOKEN environment variable is not set!");
+  process.exit(1);
+}
+
+console.log("🔗 Connecting to:", process.env.TURSO_DATABASE_URL);
+
 // ── Turso client ──────────────────────────────────────────────────────────────
 const db = createClient({
   url:       process.env.TURSO_DATABASE_URL,
