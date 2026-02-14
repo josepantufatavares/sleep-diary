@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Digital Sleep Diary</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.8.0/Recharts.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f172a; color: #fff; font-family: system-ui, sans-serif; min-height: 100vh; }
+  input, select, textarea, button { font-family: inherit; }
+  input[type=range] { width: 100%; cursor: pointer; }
+  input[type=range].accent-indigo { accent-color: #6366f1; }
+  input[type=range].accent-yellow { accent-color: #fbbf24; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #1e293b; }
+  ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+  .inp { width:100%; background:#1e293b; border:1px solid #475569; border-radius:8px; padding:8px 12px; color:#fff; font-size:0.875rem; outline:none; }
+  .inp:focus { border-color:#818cf8; }
+  .sel { width:100%; background:#1e293b; border:1px solid #475569; border-radius:8px; padding:8px 12px; color:#fff; font-size:0.875rem; outline:none; }
+  .lbl { display:block; color:#cbd5e1; font-size:0.75rem; margin-bottom:4px; font-weight:500; }
+  .btn-primary { width:100%; padding:10px; border-radius:12px; font-weight:700; color:#fff; border:none; cursor:pointer; font-size:0.875rem; background:linear-gradient(to right,#4f46e5,#7c3aed); transition:opacity 0.15s; }
+  .btn-primary:hover { opacity:0.9; }
+  .btn-outline { background:none; border:1px solid #475569; color:#94a3b8; border-radius:8px; padding:4px 12px; font-size:0.75rem; cursor:pointer; transition:color 0.15s; }
+  .btn-outline:hover { color:#fff; }
+  .tab-btn { flex-shrink:0; padding:12px; font-size:0.75rem; font-weight:500; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; color:#94a3b8; transition:color 0.15s; }
+  .tab-btn.active { color:#818cf8; border-bottom-color:#818cf8; }
+  .card { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:16px; }
+  .stat-card { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:16px; text-align:center; }
+  .mini-card { background:#334155; border-radius:8px; padding:8px; text-align:center; }
+  .space-y-3>*+* { margin-top:12px; } .space-y-4>*+* { margin-top:16px; } .space-y-5>*+* { margin-top:20px; } .space-y-2>*+* { margin-top:8px; }
+  .grad-header { background:linear-gradient(to right,#1e1b4b,#4c1d95,#0f172a); }
+  .grad-admin  { background:linear-gradient(to right,#4a1d96,#1e1b4b,#0f172a); }
+  .spinner { border:3px solid #334155; border-top-color:#6366f1; border-radius:50%; width:32px; height:32px; animation:spin 0.7s linear infinite; margin:40px auto; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const { useState, useEffect, useCallback } = React;
+const { BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis,
+        XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+// ── API helper ────────────────────────────────────────────────────────────────
+const API = async (method, path, body, token) => {
+  const res = await fetch("/api" + path, {
+    method,
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Request failed");
+  return data;
+};
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+const fmt = d => new Date(d).toLocaleDateString("en-GB", { weekday:"short", day:"2-digit", month:"short" });
+const timeToH = t => { const [h,m]=t.split(":").map(Number); return h+m/60; };
+const calcDur = (bed,wake) => { let b=timeToH(bed),w=timeToH(wake); if(w<=b) w+=24; return Math.round((w-b)*10)/10; };
+const avg = arr => arr.length ? +(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0;
+
+const SECURITY_QUESTIONS = [
+  "What was the name of your first pet?",
+  "What is your mother's maiden name?",
+  "What city were you born in?",
+  "What was the name of your primary school?",
+  "What is your favourite book?",
+];
+
+const TIPS = [
+  { icon:"📵", title:"Limit Screen Time", text:"Avoid screens at least 1 hour before bed. Blue light suppresses melatonin production." },
+  { icon:"⏰", title:"Consistent Schedule", text:"Go to bed and wake up at the same time every day, even on weekends." },
+  { icon:"🌡️", title:"Cool Your Room", text:"Keep your bedroom between 16–20°C for optimal sleep quality." },
+  { icon:"☕", title:"Avoid Caffeine", text:"Avoid caffeine after 2 PM. It can stay in your system for up to 6 hours." },
+  { icon:"🧘", title:"Wind Down", text:"Try reading, stretching, or meditation before bed to signal your brain it's time to sleep." },
+  { icon:"🌙", title:"Darkness Matters", text:"Use blackout curtains or a sleep mask. Even small amounts of light can disrupt sleep." },
+];
+
+const genInsights = entries => {
+  if (entries.length < 2) return ["Log at least 2 days to get personalized insights!"];
+  const msgs = [], as=avg(entries.map(e=>e.duration||e.duration)), ae=avg(entries.map(e=>e.energy)), asc=avg(entries.map(e=>e.screen_time||e.screenTime));
+  if (as<7) msgs.push(`⚠️ Your average sleep is ${as}h — below the recommended 7–9 hours.`);
+  else msgs.push(`✅ Great! Your average sleep of ${as}h is within healthy range.`);
+  const low=entries.filter(e=>(e.screen_time||e.screenTime)<=1), high=entries.filter(e=>(e.screen_time||e.screenTime)>1);
+  if(low.length&&high.length){const eL=avg(low.map(e=>e.energy)),eH=avg(high.map(e=>e.energy));if(eL>eH)msgs.push(`💡 On days with ≤1h screen time, your energy was ${(eL-eH).toFixed(1)} pts higher!`);}
+  if(asc>2) msgs.push(`📱 You average ${asc}h of pre-sleep screen time. Try reducing it.`);
+  if(ae>=7) msgs.push(`⚡ Morning energy is strong (avg ${ae}/10). Keep it up!`);
+  else if(ae<5) msgs.push(`😴 Morning energy is low (avg ${ae}/10). Better habits may help.`);
+  return msgs;
+};
+
+// ── AuthScreen ────────────────────────────────────────────────────────────────
+function AuthScreen({ onLogin }) {
+  const [mode,setMode]=useState("login");
+  const [form,setForm]=useState({username:"",password:"",confirm:"",secQ:0,secA:""});
+  const [rec,setRec]=useState({step:1,username:"",question:"",storedAnswer:"",answer:"",newPass:"",confirm:""});
+  const [err,setErr]=useState(""); const [ok,setOk]=useState(""); const [loading,setLoading]=useState(false);
+  const sf=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const sr=(k,v)=>setRec(r=>({...r,[k]:v}));
+
+  const handleAuth = async () => {
+    setErr(""); setOk(""); setLoading(true);
+    try {
+      const u=form.username.trim().toLowerCase(), p=form.password;
+      if(!u||!p) throw new Error("Please fill all fields.");
+      if(mode==="register"&&p!==form.confirm) throw new Error("Passwords don't match.");
+      if(mode==="register"&&!form.secA.trim()) throw new Error("Please provide a security answer.");
+      const endpoint = mode==="login" ? "/login" : "/register";
+      const body = mode==="login" ? {username:u,password:p}
+        : {username:u,password:p,secQ:+form.secQ,secA:form.secA.trim()};
+      const data = await API("POST", endpoint, body);
+      localStorage.setItem("sd_token", data.token);
+      localStorage.setItem("sd_user", JSON.stringify({username:data.username,isAdmin:data.isAdmin}));
+      onLogin({username:data.username,isAdmin:data.isAdmin,token:data.token});
+    } catch(e){ setErr(e.message); } finally { setLoading(false); }
+  };
+
+  const handleRecover = async () => {
+    setErr(""); setOk(""); setLoading(true);
+    try {
+      if(rec.step===1){
+        if(!rec.username.trim()) throw new Error("Enter your username.");
+        const data = await API("POST","/recover/question",{username:rec.username.trim()});
+        setRec(rv=>({...rv,step:2,question:data.question}));
+      } else if(rec.step===2){
+        if(!rec.answer.trim()) throw new Error("Please enter your answer.");
+        setRec(rv=>({...rv,step:3}));
+      } else {
+        if(rec.newPass.length<4) throw new Error("Min. 4 characters.");
+        if(rec.newPass!==rec.confirm) throw new Error("Passwords don't match.");
+        await API("POST","/recover/verify",{username:rec.username.trim(),answer:rec.answer.trim(),newPassword:rec.newPass});
+        setOk("Password reset! You can now log in."); 
+        setTimeout(()=>{setMode("login");setErr("");setOk("");setRec({step:1,username:"",question:"",storedAnswer:"",answer:"",newPass:"",confirm:""});},2000);
+      }
+    } catch(e){ setErr(e.message); } finally{ setLoading(false); }
+  };
+
+  return React.createElement("div",{style:{minHeight:"100vh",background:"#0f172a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"16px"}},
+    React.createElement("div",{style:{fontSize:"3rem",marginBottom:"8px"}},"🌙"),
+    React.createElement("h1",{style:{fontSize:"1.5rem",fontWeight:700,color:"#fff",marginBottom:"4px"}},"Digital Sleep Diary"),
+    React.createElement("p",{style:{color:"#94a3b8",fontSize:"0.875rem",marginBottom:"24px"}},"Track sleep · screen time · morning energy"),
+    React.createElement("div",{className:"card",style:{width:"100%",maxWidth:"384px"}},
+      mode!=="recover"&&React.createElement("div",{style:{display:"flex",borderRadius:"8px",overflow:"hidden",border:"1px solid #475569",marginBottom:"16px"}},
+        ["login","register"].map(m=>React.createElement("button",{key:m,onClick:()=>{setMode(m);setErr("");setOk("");},style:{flex:1,padding:"8px",fontSize:"0.875rem",fontWeight:500,background:mode===m?"#4f46e5":"none",color:mode===m?"#fff":"#94a3b8",border:"none",cursor:"pointer"}},m==="login"?"Login":"Register"))
+      ),
+      mode!=="recover"&&React.createElement(React.Fragment,null,
+        React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Username"),React.createElement("input",{className:"inp",placeholder:"your username",value:form.username,onChange:e=>sf("username",e.target.value)})),
+        React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Password"),React.createElement("input",{type:"password",className:"inp",placeholder:"••••••",value:form.password,onChange:e=>sf("password",e.target.value)})),
+        mode==="register"&&React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Confirm Password"),React.createElement("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>sf("confirm",e.target.value)})),
+          React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Security Question"),React.createElement("select",{className:"sel",value:form.secQ,onChange:e=>sf("secQ",e.target.value)},SECURITY_QUESTIONS.map((q,i)=>React.createElement("option",{key:i,value:i},q)))),
+          React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Your Answer"),React.createElement("input",{className:"inp",placeholder:"Answer (case insensitive)",value:form.secA,onChange:e=>sf("secA",e.target.value)}))
+        ),
+        err&&React.createElement("p",{style:{color:"#f87171",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},err),
+        ok&&React.createElement("p",{style:{color:"#4ade80",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},ok),
+        React.createElement("button",{className:"btn-primary",onClick:handleAuth,disabled:loading},loading?"Loading...":mode==="login"?"Login →":"Create Account →"),
+        mode==="login"&&React.createElement("div",{style:{textAlign:"center",marginTop:"8px"}},
+          React.createElement("button",{onClick:()=>{setMode("recover");setErr("");setOk("");},style:{color:"#818cf8",fontSize:"0.75rem",textDecoration:"underline",background:"none",border:"none",cursor:"pointer"}},"Forgot password?"))
+      ),
+      mode==="recover"&&React.createElement(React.Fragment,null,
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"}},
+          React.createElement("button",{onClick:()=>{setMode("login");setErr("");setOk("");},style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.2rem"}},"←"),
+          React.createElement("span",{style:{color:"#fff",fontWeight:600,fontSize:"0.875rem"}},"Password Recovery")
+        ),
+        React.createElement("div",{style:{display:"flex",gap:"4px",marginBottom:"12px"}},[1,2,3].map(s=>React.createElement("div",{key:s,style:{flex:1,height:"4px",borderRadius:"9999px",background:rec.step>=s?"#6366f1":"#334155"}}))),
+        rec.step===1&&React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Username"),React.createElement("input",{className:"inp",placeholder:"your username",value:rec.username,onChange:e=>sr("username",e.target.value)})),
+        rec.step===2&&React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{background:"#334155",borderRadius:"8px",padding:"12px",marginBottom:"12px"}},React.createElement("p",{style:{color:"#e2e8f0",fontSize:"0.75rem",fontWeight:500}},rec.question)),
+          React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Your Answer"),React.createElement("input",{className:"inp",placeholder:"Answer",value:rec.answer,onChange:e=>sr("answer",e.target.value)}))
+        ),
+        rec.step===3&&React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"New Password"),React.createElement("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:rec.newPass,onChange:e=>sr("newPass",e.target.value)})),
+          React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Confirm Password"),React.createElement("input",{type:"password",className:"inp",placeholder:"••••••",value:rec.confirm,onChange:e=>sr("confirm",e.target.value)}))
+        ),
+        err&&React.createElement("p",{style:{color:"#f87171",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},err),
+        ok&&React.createElement("p",{style:{color:"#4ade80",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},ok),
+        React.createElement("button",{className:"btn-primary",onClick:handleRecover,disabled:loading},loading?"Loading...":rec.step===3?"Reset Password ✓":"Next →")
+      )
+    )
+  );
+}
+
+// ── ChangePasswordModal ────────────────────────────────────────────────────────
+function ChangePasswordModal({ token, onClose }) {
+  const [form,setForm]=useState({current:"",newPass:"",confirm:""});
+  const [err,setErr]=useState(""); const [ok,setOk]=useState(""); const [loading,setLoading]=useState(false);
+  const handle = async () => {
+    setErr(""); setOk(""); setLoading(true);
+    try {
+      if(!form.current||!form.newPass||!form.confirm) throw new Error("Fill all fields.");
+      if(form.newPass.length<4) throw new Error("Min. 4 characters.");
+      if(form.newPass!==form.confirm) throw new Error("Passwords don't match.");
+      await API("POST","/change-password",{currentPassword:form.current,newPassword:form.newPass},token);
+      setOk("Password changed!"); setTimeout(onClose,1500);
+    } catch(e){ setErr(e.message); } finally{ setLoading(false); }
+  };
+  return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"16px"}},
+    React.createElement("div",{className:"card",style:{width:"100%",maxWidth:"384px"}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}},React.createElement("span",{style:{color:"#fff",fontWeight:600}},"🔑 Change Password"),React.createElement("button",{onClick:onClose,style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.5rem"}},"×")),
+      React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Current Password"),React.createElement("input",{type:"password",className:"inp",placeholder:"••••••",value:form.current,onChange:e=>setForm(f=>({...f,current:e.target.value}))})),
+      React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"New Password"),React.createElement("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
+      React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Confirm New Password"),React.createElement("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
+      err&&React.createElement("p",{style:{color:"#f87171",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},err),
+      ok&&React.createElement("p",{style:{color:"#4ade80",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},ok),
+      React.createElement("button",{className:"btn-primary",onClick:handle,disabled:loading},loading?"Saving...":"Save Changes")
+    )
+  );
+}
+
+// ── AdminResetModal ────────────────────────────────────────────────────────────
+function AdminResetModal({ username, token, onClose }) {
+  const [form,setForm]=useState({newPass:"",confirm:""});
+  const [err,setErr]=useState(""); const [ok,setOk]=useState(""); const [loading,setLoading]=useState(false);
+  const handle = async () => {
+    setErr(""); setOk(""); setLoading(true);
+    try {
+      if(form.newPass.length<4) throw new Error("Min. 4 characters.");
+      if(form.newPass!==form.confirm) throw new Error("Passwords don't match.");
+      await API("POST","/admin/reset-password",{username,newPassword:form.newPass},token);
+      setOk("Password reset!"); setTimeout(onClose,1500);
+    } catch(e){ setErr(e.message); } finally{ setLoading(false); }
+  };
+  return React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"16px"}},
+    React.createElement("div",{className:"card",style:{width:"100%",maxWidth:"384px"}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}},React.createElement("span",{style:{color:"#fff",fontWeight:600}},"🔑 Reset — @"+username),React.createElement("button",{onClick:onClose,style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.5rem"}},"×")),
+      React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"New Password"),React.createElement("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
+      React.createElement("div",{style:{marginBottom:"12px"}},React.createElement("label",{className:"lbl"},"Confirm Password"),React.createElement("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
+      err&&React.createElement("p",{style:{color:"#f87171",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},err),
+      ok&&React.createElement("p",{style:{color:"#4ade80",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},ok),
+      React.createElement("button",{onClick:handle,disabled:loading,style:{width:"100%",padding:"10px",borderRadius:"12px",fontWeight:700,color:"#fff",border:"none",cursor:"pointer",background:"linear-gradient(to right,#dc2626,#ea580c)"}},loading?"Resetting...":"Reset Password")
+    )
+  );
+}
+
+// ── StudentApp ─────────────────────────────────────────────────────────────────
+function StudentApp({ user }) {
+  const [entries,setEntries]=useState([]);
+  const [tab,setTab]=useState("log");
+  const [form,setForm]=useState({date:new Date().toISOString().split("T")[0],bedTime:"23:00",wakeTime:"07:00",screenTime:1,energy:7,notes:""});
+  const [saved,setSaved]=useState(false);
+  const [showPw,setShowPw]=useState(false);
+  const [loading,setLoading]=useState(true);
+
+  const loadEntries = useCallback(async()=>{
+    try{ const data=await API("GET","/entries",null,user.token); setEntries(data); } catch{}
+    setLoading(false);
+  },[user.token]);
+
+  useEffect(()=>{ loadEntries(); },[loadEntries]);
+
+  const handleSave = async () => {
+    const duration=calcDur(form.bedTime,form.wakeTime);
+    try {
+      await API("POST","/entries",{...form,duration},user.token);
+      setSaved(true); setTimeout(()=>setSaved(false),2000);
+      loadEntries();
+    } catch(e){ alert(e.message); }
+  };
+
+  const del = async id => {
+    try{ await API("DELETE","/entries/"+id,null,user.token); loadEntries(); } catch(e){ alert(e.message); }
+  };
+
+  const weekly=entries.slice(0,7).reverse();
+  const chartData=weekly.map(e=>({name:fmt(e.date),Sleep:e.duration,Screen:e.screen_time,Energy:e.energy}));
+  const TABS=[["log","📝 Log"],["history","📅 History"],["charts","📊 Charts"],["insights","💡 Insights"],["tips","🌿 Tips"]];
+
+  return React.createElement("div",{style:{minHeight:"100vh",background:"#0f172a"}},
+    showPw&&React.createElement(ChangePasswordModal,{token:user.token,onClose:()=>setShowPw(false)}),
+    React.createElement("div",{className:"grad-header",style:{padding:"16px",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      React.createElement("div",null,React.createElement("div",{style:{fontSize:"1.25rem",fontWeight:700,color:"#fff"}},"🌙 Sleep Diary"),React.createElement("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"@"+user.username)),
+      React.createElement("div",{style:{display:"flex",gap:"8px"}},
+        React.createElement("button",{className:"btn-outline",onClick:()=>setShowPw(true)},"🔑 Password"),
+        React.createElement("button",{className:"btn-outline",onClick:user.logout},"Logout")
+      )
+    ),
+    React.createElement("div",{style:{display:"flex",borderBottom:"1px solid #334155",background:"#0f172a",overflowX:"auto"}},
+      TABS.map(([k,l])=>React.createElement("button",{key:k,className:"tab-btn"+(tab===k?" active":""),onClick:()=>setTab(k)},l))
+    ),
+    React.createElement("div",{style:{padding:"16px",maxWidth:"672px",margin:"0 auto"}},
+      loading&&React.createElement("div",{className:"spinner"}),
+      !loading&&React.createElement(React.Fragment,null,
+        tab==="log"&&React.createElement("div",{className:"space-y-4"},
+          React.createElement("h2",{style:{color:"#a5b4fc",fontWeight:600}},"Today's Sleep Log"),
+          React.createElement("div",null,React.createElement("label",{className:"lbl"},"📅 Date"),React.createElement("input",{type:"date",className:"inp",value:form.date,onChange:e=>setForm({...form,date:e.target.value})})),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}},
+            React.createElement("div",null,React.createElement("label",{className:"lbl"},"🛏️ Bedtime"),React.createElement("input",{type:"time",className:"inp",value:form.bedTime,onChange:e=>setForm({...form,bedTime:e.target.value})})),
+            React.createElement("div",null,React.createElement("label",{className:"lbl"},"⏰ Wake-up"),React.createElement("input",{type:"time",className:"inp",value:form.wakeTime,onChange:e=>setForm({...form,wakeTime:e.target.value})}))
+          ),
+          React.createElement("div",{style:{background:"#1e293b",borderRadius:"8px",padding:"12px",textAlign:"center"}},React.createElement("span",{style:{color:"#94a3b8"}},"Duration: "),React.createElement("span",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.25rem"}},calcDur(form.bedTime,form.wakeTime)+"h")),
+          React.createElement("div",null,React.createElement("label",{className:"lbl"},"📱 Pre-sleep screen time: ",React.createElement("span",{style:{color:"#a5b4fc",fontWeight:700}},form.screenTime+"h")),React.createElement("input",{type:"range",min:0,max:6,step:0.5,value:form.screenTime,className:"accent-indigo",onChange:e=>setForm({...form,screenTime:+e.target.value})}),React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.75rem",color:"#64748b",marginTop:"4px"}},React.createElement("span",null,"0h"),React.createElement("span",null,"3h"),React.createElement("span",null,"6h"))),
+          React.createElement("div",null,React.createElement("label",{className:"lbl"},"⚡ Morning energy: ",React.createElement("span",{style:{color:"#facc15",fontWeight:700}},form.energy+"/10")),React.createElement("input",{type:"range",min:1,max:10,step:1,value:form.energy,className:"accent-yellow",onChange:e=>setForm({...form,energy:+e.target.value})}),React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.75rem",color:"#64748b",marginTop:"4px"}},React.createElement("span",null,"😴 1"),React.createElement("span",null,"😐 5"),React.createElement("span",null,"⚡ 10"))),
+          React.createElement("div",null,React.createElement("label",{className:"lbl"},"📝 Notes"),React.createElement("textarea",{className:"inp",placeholder:"How did you sleep?",value:form.notes,onChange:e=>setForm({...form,notes:e.target.value}),style:{resize:"none",height:"64px"}})),
+          React.createElement("button",{className:"btn-primary",onClick:handleSave},saved?"✅ Saved!":"💾 Save Entry")
+        ),
+        tab==="history"&&React.createElement("div",{className:"space-y-3"},
+          React.createElement("h2",{style:{color:"#a5b4fc",fontWeight:600}},"Weekly History"),
+          entries.length===0&&React.createElement("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}},"No entries yet. Start logging! 🌙"),
+          entries.slice(0,7).map(e=>React.createElement("div",{key:e.id,className:"card"},
+            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+              React.createElement("div",null,React.createElement("p",{style:{fontWeight:600,color:"#fff",fontSize:"0.875rem"}},fmt(e.date)),React.createElement("p",{style:{color:"#94a3b8",fontSize:"0.75rem",marginTop:"2px"}},e.bed_time+" → "+e.wake_time)),
+              React.createElement("button",{onClick:()=>del(e.id),style:{background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:"1rem"}},"🗑")
+            ),
+            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px",marginTop:"12px"}},
+              React.createElement("div",{className:"mini-card"},React.createElement("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"0.875rem"}},e.duration+"h"),React.createElement("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Sleep")),
+              React.createElement("div",{className:"mini-card"},React.createElement("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"0.875rem"}},e.screen_time+"h"),React.createElement("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Screen")),
+              React.createElement("div",{className:"mini-card"},React.createElement("div",{style:{color:"#fde047",fontWeight:700,fontSize:"0.875rem"}},e.energy+"/10"),React.createElement("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Energy"))
+            ),
+            e.notes&&React.createElement("p",{style:{color:"#94a3b8",fontSize:"0.75rem",marginTop:"8px",fontStyle:"italic"}},'"'+e.notes+'"')
+          ))
+        ),
+        tab==="charts"&&React.createElement("div",{className:"space-y-5"},
+          React.createElement("h2",{style:{color:"#a5b4fc",fontWeight:600}},"Weekly Charts"),
+          chartData.length<2&&React.createElement("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}},"Log at least 2 days! 📊"),
+          chartData.length>=2&&React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"card"},React.createElement("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}},"Sleep Duration (hours)"),React.createElement(ResponsiveContainer,{width:"100%",height:160},React.createElement(BarChart,{data:chartData},React.createElement(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),React.createElement(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:9}}),React.createElement(YAxis,{tick:{fill:"#94a3b8",fontSize:9},domain:[0,12]}),React.createElement(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:11}}),React.createElement(Bar,{dataKey:"Sleep",fill:"#6366f1",radius:[4,4,0,0]})))),
+            React.createElement("div",{className:"card"},React.createElement("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}},"Screen Time vs Energy"),React.createElement(ResponsiveContainer,{width:"100%",height:160},React.createElement(LineChart,{data:chartData},React.createElement(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),React.createElement(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:9}}),React.createElement(YAxis,{tick:{fill:"#94a3b8",fontSize:9}}),React.createElement(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:11}}),React.createElement(Legend,{wrapperStyle:{fontSize:10}}),React.createElement(Line,{type:"monotone",dataKey:"Screen",stroke:"#a78bfa",strokeWidth:2,dot:{r:3},name:"Screen (h)"}),React.createElement(Line,{type:"monotone",dataKey:"Energy",stroke:"#fbbf24",strokeWidth:2,dot:{r:3},name:"Energy (/10)"}))))
+          )
+        ),
+        tab==="insights"&&React.createElement("div",{className:"space-y-3"},
+          React.createElement("h2",{style:{color:"#a5b4fc",fontWeight:600}},"Automatic Insights"),
+          genInsights(entries).map((msg,i)=>React.createElement("div",{key:i,className:"card"},React.createElement("p",{style:{color:"#e2e8f0",fontSize:"0.875rem",lineHeight:1.625}},msg)))
+        ),
+        tab==="tips"&&React.createElement("div",{className:"space-y-3"},
+          React.createElement("h2",{style:{color:"#a5b4fc",fontWeight:600}},"Sleep Hygiene Tips"),
+          TIPS.map((t,i)=>React.createElement("div",{key:i,className:"card",style:{display:"flex",gap:"12px"}},React.createElement("span",{style:{fontSize:"1.5rem"}},t.icon),React.createElement("div",null,React.createElement("h3",{style:{color:"#fff",fontWeight:600,fontSize:"0.875rem"}},t.title),React.createElement("p",{style:{color:"#94a3b8",fontSize:"0.75rem",marginTop:"4px",lineHeight:1.625}},t.text))))
+        )
+      )
+    )
+  );
+}
+
+// ── AdminApp ───────────────────────────────────────────────────────────────────
+function AdminApp({ user }) {
+  const [data,setData]=useState([]);
+  const [tab,setTab]=useState("overview");
+  const [loading,setLoading]=useState(true);
+  const [resetUser,setResetUser]=useState(null);
+
+  const loadData = useCallback(async()=>{
+    setLoading(true);
+    try{ const d=await API("GET","/admin/users",null,user.token); setData(d); } catch{}
+    setLoading(false);
+  },[user.token]);
+
+  useEffect(()=>loadData(),[loadData]);
+
+  const allEntries=data.flatMap(u=>u.entries);
+  const rankings=data.filter(u=>u.entries.length>0).map(u=>({name:u.username,avgSleep:avg(u.entries.map(e=>e.duration)),avgEnergy:avg(u.entries.map(e=>e.energy)),avgScreen:avg(u.entries.map(e=>e.screen_time)),count:u.entries.length}));
+  const groupChart=rankings.map(r=>({name:r.name,Sleep:r.avgSleep,Energy:r.avgEnergy,Screen:r.avgScreen}));
+  const medal=i=>["🥇","🥈","🥉"][i]||(i+1)+".";
+  const TABS=[["overview","📊 Overview"],["rankings","🏆 Rankings"],["compare","👥 Compare"],["students","📋 Students"]];
+
+  return React.createElement("div",{style:{minHeight:"100vh",background:"#0f172a"}},
+    resetUser&&React.createElement(AdminResetModal,{username:resetUser,token:user.token,onClose:()=>{setResetUser(null);loadData();}}),
+    React.createElement("div",{className:"grad-admin",style:{padding:"16px",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      React.createElement("div",null,React.createElement("div",{style:{fontSize:"1.25rem",fontWeight:700,color:"#fff"}},"🛡️ Admin Panel"),React.createElement("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},data.length+" students registered")),
+      React.createElement("button",{className:"btn-outline",onClick:user.logout},"Logout")
+    ),
+    React.createElement("div",{style:{display:"flex",borderBottom:"1px solid #334155",background:"#0f172a",overflowX:"auto"}},
+      TABS.map(([k,l])=>React.createElement("button",{key:k,className:"tab-btn"+(tab===k?" active":""),onClick:()=>setTab(k)},l))
+    ),
+    React.createElement("div",{style:{padding:"16px",maxWidth:"672px",margin:"0 auto"}},
+      loading&&React.createElement("div",{className:"spinner"}),
+      !loading&&React.createElement(React.Fragment,null,
+        tab==="overview"&&React.createElement("div",{className:"space-y-4"},
+          React.createElement("h2",{style:{color:"#a5b4fc",fontWeight:600}},"Group Overview"),
+          allEntries.length===0&&React.createElement("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}},"No student data yet."),
+          allEntries.length>0&&React.createElement(React.Fragment,null,
+            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}},
+              [{label:"Avg Sleep",val:avg(allEntries.map(e=>e.duration))+"h",icon:"🛏️",color:"#a5b4fc"},{label:"Avg Energy",val:avg(allEntries.map(e=>e.energy))+"/10",icon:"⚡",color:"#facc15"},{label:"Avg Screen",val:avg(allEntries.map(e=>e.screen_time))+"h",icon:"📱",color:"#d8b4fe"},{label:"Total Logs",val:allEntries.length,icon:"📝",color:"#86efac"}].map((s,i)=>
+                React.createElement("div",{key:i,className:"stat-card"},React.createElement("div",{style:{fontSize:"1.5rem",marginBottom:"4px"}},s.icon),React.createElement("div",{style:{fontSize:"1.25rem",fontWeight:700,color:s.color}},s.val),React.createElement("div",{style:{color:"#94a3b8",fontSize:"0.75rem",marginTop:"4px"}},s.label))
+              )
+            ),
+            groupChart.length>=2&&React.createElement("div",{className:"card"},React.createElement("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}},"Student Averages"),React.createElement(ResponsiveContainer,{width:"100%",height:200},React.createElement(BarChart,{data:groupChart,layout:"vertical"},React.createElement(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),React.createElement(XAxis,{type:"number",tick:{fill:"#94a3b8",fontSize:9}}),React.createElement(YAxis,{type:"category",dataKey:"name",tick:{fill:"#94a3b8",fontSize:9},width:60}),React.createElement(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:11}}),React.createElement(Legend,{wrapperStyle:{fontSize:10}}),React.createElement(Bar,{dataKey:"Sleep",fill:"#6366f1",name:"Sleep (h)",radius:[0,4,4,0]}),rest=React.createElement(Bar,{dataKey:"Energy",fill:"#fbbf24",name:"Energy (/10)",radius:[0,4,4,0]}),React.createElement(Bar,{dataKey:"Screen",fill:"#a78bfa",name:"Screen (h)",radius:[0,4,4,0]}))))
+          )
+        ),
+        tab==="rankings"&&React.createElement("div",{className:"space-y-4"},
+          React.createElement("h2",{style:{color:"#a5b4fc",fontWeight:600}},"🏆 Rankings"),
+          rankings.length===0&&React.createElement("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}},"No data yet."),
+          [{title:"Most Sleep 😴",key:"avgSleep",unit:"h avg",sort:(a,b)=>b.avgSleep-a.avgSleep,color:"#a5b4fc"},{title:"Best Energy ⚡",key:"avgEnergy",unit:"/10 avg",sort:(a,b)=>b.avgEnergy-a.avgEnergy,color:"#facc15"},{title:"Least Screen 📵",key:"avgScreen",unit:"h avg",sort:(a,b)=>a.avgScreen-b.avgScreen,color:"#d8b4fe"},{title:"Most Consistent 📅",key:"count",unit:"logs",sort:(a,b)=>b.count-a.count,color:"#86efac"}].map((r,ri)=>
+            React.createElement("div",{key:ri,className:"card"},
+              React.createElement("h3",{style:{color:"#fff",fontWeight:600,fontSize:"0.875rem",marginBottom:"12px"}},r.title),
+              React.createElement("div",{className:"space-y-2"},[...rankings].sort(r.sort).slice(0,5).map((u,i)=>
+                React.createElement("div",{key:u.name,style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:"8px"}},React.createElement("span",{style:{fontSize:"1rem"}},medal(i)),React.createElement("span",{style:{color:"#e2e8f0",fontSize:"0.875rem"}},"@"+u.name)),
+                  React.createElement("span",{style:{color:r.color,fontWeight:700,fontSize:"0.875rem"}},u[r.key]+" "+r.unit)
+                )
+              ))
+            )
+          )
+        ),
+        tab==="compare"&&React.createElement("div",{className:"space-y-4"},
+          React.createElement("h2",{style:{color:"#a5b4fc",fontWeight:600}},"👥 Collective Charts"),
+          groupChart.length<2&&React.createElement("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}},"Need at least 2 students with data."),
+          groupChart.length>=2&&React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"card"},React.createElement("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}},"Sleep per Student"),React.createElement(ResponsiveContainer,{width:"100%",height:180},React.createElement(BarChart,{data:groupChart},React.createElement(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),React.createElement(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:9}}),React.createElement(YAxis,{tick:{fill:"#94a3b8",fontSize:9},domain:[0,12]}),React.createElement(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:11}}),React.createElement(Bar,{dataKey:"Sleep",fill:"#6366f1",radius:[4,4,0,0],name:"Avg Sleep (h)"}))),
+            React.createElement("div",{className:"card"},React.createElement("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}},"Energy vs Screen"),React.createElement(ResponsiveContainer,{width:"100%",height:180},React.createElement(BarChart,{data:groupChart},React.createElement(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),React.createElement(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:9}}),React.createElement(YAxis,{tick:{fill:"#94a3b8",fontSize:9}}),React.createElement(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:11}}),React.createElement(Legend,{wrapperStyle:{fontSize:10}}),React.createElement(Bar,{dataKey:"Energy",fill:"#fbbf24",radius:[4,4,0,0],name:"Energy (/10)"}),React.createElement(Bar,{dataKey:"Screen",fill:"#a78bfa",radius:[4,4,0,0],name:"Screen (h)"}))),
+            React.createElement("div",{className:"card"},React.createElement("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}},"Radar — Student Profiles"),React.createElement(ResponsiveContainer,{width:"100%",height:220},React.createElement(RadarChart,{data:groupChart},React.createElement(PolarGrid,{stroke:"#334155"}),React.createElement(PolarAngleAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:9}}),React.createElement(Radar,{name:"Sleep",dataKey:"Sleep",stroke:"#6366f1",fill:"#6366f1",fillOpacity:0.3}),React.createElement(Radar,{name:"Energy",dataKey:"Energy",stroke:"#fbbf24",fill:"#fbbf24",fillOpacity:0.3}),React.createElement(Legend,{wrapperStyle:{fontSize:10}}))))
+          )
+        ),
+        tab==="students"&&React.createElement("div",{className:"space-y-3"},
+          React.createElement("h2",{style:{color:"#a5b4fc",fontWeight:600}},"📋 All Students"),
+          data.length===0&&React.createElement("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}},"No students registered yet."),
+          data.map(u=>React.createElement("div",{key:u.id,className:"card"},
+            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}},
+              React.createElement("span",{style:{color:"#fff",fontWeight:600}},"@"+u.username),
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:"8px"}},
+                React.createElement("span",{style:{color:"#94a3b8",fontSize:"0.75rem"}},u.entries.length+" log"+(u.entries.length!==1?"s":"")),
+                React.createElement("button",{onClick:()=>setResetUser(u.username),style:{fontSize:"0.75rem",color:"#fb923c",border:"1px solid #9a3412",background:"none",borderRadius:"4px",padding:"2px 8px",cursor:"pointer"}},"🔑 Reset PW")
+              )
+            ),
+            u.entries.length>0?React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}},
+              React.createElement("div",{className:"mini-card"},React.createElement("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"0.875rem"}},avg(u.entries.map(e=>e.duration))+"h"),React.createElement("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Avg Sleep")),
+              React.createElement("div",{className:"mini-card"},React.createElement("div",{style:{color:"#facc15",fontWeight:700,fontSize:"0.875rem"}},avg(u.entries.map(e=>e.energy))+"/10"),React.createElement("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Avg Energy")),
+              React.createElement("div",{className:"mini-card"},React.createElement("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"0.875rem"}},avg(u.entries.map(e=>e.screen_time))+"h"),React.createElement("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Avg Screen"))
+            ):React.createElement("p",{style:{color:"#64748b",fontSize:"0.75rem"}},"No entries yet.")
+          ))
+        )
+      )
+    )
+  );
+}
+
+// ── Main App ───────────────────────────────────────────────────────────────────
+function App() {
+  const [user,setUser]=useState(()=>{
+    const t=localStorage.getItem("sd_token"), u=localStorage.getItem("sd_user");
+    return t&&u ? {...JSON.parse(u),token:t} : null;
+  });
+
+  const logout = () => {
+    localStorage.removeItem("sd_token"); localStorage.removeItem("sd_user"); setUser(null);
+  };
+
+  const handleLogin = data => setUser(data);
+
+  if(!user) return React.createElement(AuthScreen,{onLogin:handleLogin});
+  const u={...user,logout};
+  if(user.isAdmin) return React.createElement(AdminApp,{user:u});
+  return React.createElement(StudentApp,{user:u});
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
