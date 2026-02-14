@@ -1,10 +1,14 @@
 const { Pool } = require("pg");
 const bcrypt   = require("bcryptjs");
 
-// Railway injects DATABASE_URL automatically when you add a Postgres service
+if (!process.env.DATABASE_URL) {
+  console.error("❌ DATABASE_URL is not set!");
+  process.exit(1);
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  ssl: { rejectUnauthorized: false },
 });
 
 // ── Query helpers ─────────────────────────────────────────────────────────────
@@ -27,9 +31,10 @@ const get = async (sql, params = []) => {
   return rows[0] || null;
 };
 
-// ── Init: create tables + seed admin ─────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 const ready = (async () => {
   console.log("🔌 Connecting to PostgreSQL...");
+  console.log("📋 DATABASE_URL defined:", !!process.env.DATABASE_URL);
 
   await run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -39,7 +44,7 @@ const ready = (async () => {
       sec_q      INTEGER NOT NULL DEFAULT 0,
       sec_a      TEXT NOT NULL DEFAULT '',
       is_admin   INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (to_char(now(), 'YYYY-MM-DD HH24:MI:SS'))
+      created_at TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
     )
   `);
 
@@ -54,26 +59,23 @@ const ready = (async () => {
       screen_time REAL NOT NULL,
       energy      INTEGER NOT NULL,
       notes       TEXT DEFAULT '',
-      created_at  TEXT NOT NULL DEFAULT (to_char(now(), 'YYYY-MM-DD HH24:MI:SS')),
+      created_at  TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS'),
       UNIQUE(user_id, date)
     )
   `);
 
-  // Seed admin account if not exists
   const admin = await get("SELECT id FROM users WHERE username = 'admin'");
   if (!admin) {
     const hash = bcrypt.hashSync("admin123", 10);
-    await run("INSERT INTO users (username, password, is_admin) VALUES ($1, $2, 1)", ["admin", hash]);
+    await run(
+      "INSERT INTO users (username, password, is_admin) VALUES ($1, $2, 1)",
+      ["admin", hash]
+    );
     console.log("✅ Admin account created.");
   }
 
   console.log("✅ PostgreSQL database ready.");
   return { run, all, get };
-  } catch (e) {
-    console.error("❌ DB setup error:", e.message);
-    console.error("❌ Stack:", e.stack);
-    throw e;
-  }
 })();
 
 module.exports = { ready };
