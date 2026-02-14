@@ -1,24 +1,25 @@
 const Database = require("better-sqlite3");
-const path = require("path");
+const bcrypt   = require("bcryptjs");
+const path     = require("path");
+const fs       = require("fs");
 
-const DB_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH
-  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "sleep_diary.db")
-  : path.join(__dirname, "sleep_diary.db");
+// ── Persistent path for Railway, local fallback ───────────────────────────────
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || __dirname;
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+const DB_PATH = path.join(DATA_DIR, "sleep_diary.db");
 
 const db = new Database(DB_PATH);
-
-// Enable WAL mode for better concurrent read performance
 db.pragma("journal_mode = WAL");
 
 // ── Create tables ─────────────────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
-    id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    username  TEXT UNIQUE NOT NULL,
-    password  TEXT NOT NULL,
-    sec_q     INTEGER NOT NULL DEFAULT 0,
-    sec_a     TEXT NOT NULL DEFAULT '',
-    is_admin  INTEGER NOT NULL DEFAULT 0,
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    username   TEXT UNIQUE NOT NULL,
+    password   TEXT NOT NULL,
+    sec_q      INTEGER NOT NULL DEFAULT 0,
+    sec_a      TEXT NOT NULL DEFAULT '',
+    is_admin   INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -37,8 +38,7 @@ db.exec(`
   );
 `);
 
-// ── Seed admin account if not exists ─────────────────────────────────────────
-const bcrypt = require("bcryptjs");
+// ── Seed admin account ────────────────────────────────────────────────────────
 const adminExists = db.prepare("SELECT id FROM users WHERE username = 'admin'").get();
 if (!adminExists) {
   const hash = bcrypt.hashSync("admin123", 10);
@@ -48,14 +48,11 @@ if (!adminExists) {
 
 // ── Prepared statements ───────────────────────────────────────────────────────
 const stmts = {
-  // Users
   findUser:       db.prepare("SELECT * FROM users WHERE username = ?"),
   findUserById:   db.prepare("SELECT * FROM users WHERE id = ?"),
   createUser:     db.prepare("INSERT INTO users (username, password, sec_q, sec_a) VALUES (?, ?, ?, ?)"),
   updatePassword: db.prepare("UPDATE users SET password = ? WHERE username = ?"),
   listUsers:      db.prepare("SELECT id, username, created_at FROM users WHERE is_admin = 0"),
-
-  // Entries
   upsertEntry: db.prepare(`
     INSERT INTO entries (user_id, date, bed_time, wake_time, duration, screen_time, energy, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -67,10 +64,9 @@ const stmts = {
       energy      = excluded.energy,
       notes       = excluded.notes
   `),
-  getUserEntries:  db.prepare("SELECT * FROM entries WHERE user_id = ? ORDER BY date DESC"),
-  deleteEntry:     db.prepare("DELETE FROM entries WHERE id = ? AND user_id = ?"),
-  allEntries:      db.prepare("SELECT e.*, u.username FROM entries e JOIN users u ON e.user_id = u.id ORDER BY e.date DESC"),
-  entriesByUser:   db.prepare("SELECT * FROM entries WHERE user_id = ? ORDER BY date DESC"),
+  getUserEntries: db.prepare("SELECT * FROM entries WHERE user_id = ? ORDER BY date DESC"),
+  deleteEntry:    db.prepare("DELETE FROM entries WHERE id = ? AND user_id = ?"),
+  entriesByUser:  db.prepare("SELECT * FROM entries WHERE user_id = ? ORDER BY date DESC"),
 };
 
 module.exports = { db, stmts };
