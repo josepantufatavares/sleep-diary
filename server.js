@@ -9,6 +9,12 @@ const app    = express();
 const PORT   = process.env.PORT || 3000;
 const SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
 
+// Temporary diagnostics — remove after fix
+console.log("🔍 ENV CHECK:");
+console.log("  TURSO_DATABASE_URL:", process.env.TURSO_DATABASE_URL ? "✅ SET" : "❌ NOT SET");
+console.log("  TURSO_AUTH_TOKEN:",   process.env.TURSO_AUTH_TOKEN   ? "✅ SET" : "❌ NOT SET");
+console.log("  JWT_SECRET:",         process.env.JWT_SECRET         ? "✅ SET" : "❌ NOT SET");
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
