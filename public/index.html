@@ -18,19 +18,19 @@
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: #1e293b; }
   ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-  .inp { width:100%; background:#1e293b; border:1px solid #475569; border-radius:8px; padding:8px 12px; color:#fff; font-size:0.875rem; outline:none; }
+  .inp { width:100%; background:#1e293b; border:1px solid #475569; border-radius:8px; padding:10px 12px; color:#fff; font-size:1rem; outline:none; }
   .inp:focus { border-color:#818cf8; }
-  .sel { width:100%; background:#1e293b; border:1px solid #475569; border-radius:8px; padding:8px 12px; color:#fff; font-size:0.875rem; outline:none; }
-  .lbl { display:block; color:#cbd5e1; font-size:0.75rem; margin-bottom:4px; font-weight:500; }
-  .btn-primary { width:100%; padding:10px; border-radius:12px; font-weight:700; color:#fff; border:none; cursor:pointer; font-size:0.875rem; background:linear-gradient(to right,#4f46e5,#7c3aed); transition:opacity 0.15s; }
+  .sel { width:100%; background:#1e293b; border:1px solid #475569; border-radius:8px; padding:10px 12px; color:#fff; font-size:1rem; outline:none; }
+  .lbl { display:block; color:#e2e8f0; font-size:0.9rem; margin-bottom:5px; font-weight:500; }
+  .btn-primary { width:100%; padding:12px; border-radius:12px; font-weight:700; color:#fff; border:none; cursor:pointer; font-size:1rem; background:linear-gradient(to right,#4f46e5,#7c3aed); transition:opacity 0.15s; }
   .btn-primary:hover { opacity:0.9; }
-  .btn-outline { background:none; border:1px solid #475569; color:#94a3b8; border-radius:8px; padding:4px 12px; font-size:0.75rem; cursor:pointer; transition:color 0.15s; }
-  .btn-outline:hover { color:#fff; }
-  .tab-btn { flex-shrink:0; padding:12px; font-size:0.75rem; font-weight:500; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; color:#94a3b8; transition:color 0.15s; }
-  .tab-btn.active { color:#818cf8; border-bottom-color:#818cf8; }
+  .btn-outline { background:none; border:1px solid #64748b; color:#cbd5e1; border-radius:8px; padding:6px 14px; font-size:0.85rem; cursor:pointer; transition:color 0.15s; }
+  .btn-outline:hover { color:#fff; border-color:#94a3b8; }
+  .tab-btn { flex-shrink:0; padding:12px 16px; font-size:0.9rem; font-weight:600; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; color:#94a3b8; transition:color 0.15s; }
+  .tab-btn.active { color:#a5b4fc; border-bottom-color:#6366f1; }
   .card { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:16px; }
   .stat-card { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:16px; text-align:center; }
-  .mini-card { background:#334155; border-radius:8px; padding:8px; text-align:center; }
+  .mini-card { background:#334155; border-radius:8px; padding:10px 6px; text-align:center; }
   .space-y-2>*+* { margin-top:8px; }
   .space-y-3>*+* { margin-top:12px; }
   .space-y-4>*+* { margin-top:16px; }
@@ -39,7 +39,7 @@
   .grad-admin  { background:linear-gradient(to right,#4a1d96,#1e1b4b,#0f172a); }
   .spinner { border:3px solid #334155; border-top-color:#6366f1; border-radius:50%; width:32px; height:32px; animation:spin 0.7s linear infinite; margin:40px auto; }
   @keyframes spin { to { transform:rotate(360deg); } }
-  .footer { text-align:center; padding:16px; color:#475569; font-size:0.7rem; border-top:1px solid #1e293b; margin-top:24px; }
+  .footer { text-align:center; padding:10px 16px; color:#64748b; font-size:0.78rem; border-top:1px solid #1e293b; margin-top:12px; }
 </style>
 </head>
 <body>
@@ -153,54 +153,57 @@ function AuthScreen({ onLogin }) {
 
   const E = React.createElement;
   return E("div", { style:{minHeight:"100vh",background:"#0f172a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"16px"} },
-    E("div", { style:{fontSize:"3rem",marginBottom:"8px"} }, "🌙"),
-    E("h1",  { style:{fontSize:"1.5rem",fontWeight:700,color:"#fff",marginBottom:"4px"} }, "Digital Sleep Diary"),
-    E("p",   { style:{color:"#94a3b8",fontSize:"0.875rem",marginBottom:"24px"} }, "Track sleep · screen time · morning energy"),
-    E("div", { className:"card", style:{width:"100%",maxWidth:"384px"} },
-      mode!=="recover" && E("div", { style:{display:"flex",borderRadius:"8px",overflow:"hidden",border:"1px solid #475569",marginBottom:"16px"} },
-        ["login","register"].map(m => E("button", { key:m, onClick:()=>{setMode(m);setErr("");setOk("");}, style:{flex:1,padding:"8px",fontSize:"0.875rem",fontWeight:500,background:mode===m?"#4f46e5":"none",color:mode===m?"#fff":"#94a3b8",border:"none",cursor:"pointer"} }, m==="login"?"Login":"Register"))
+    E("div",{style:{fontSize:"3rem",marginBottom:"8px"}}, "🌙"),
+    E("h1", {style:{fontSize:"1.6rem",fontWeight:700,color:"#fff",marginBottom:"4px"}}, "Digital Sleep Diary"),
+    E("p",  {style:{color:"#94a3b8",fontSize:"0.95rem",marginBottom:"24px"}}, "Track sleep · screen time · morning energy"),
+    E("div", {className:"card", style:{width:"100%",maxWidth:"400px"}},
+      mode!=="recover" && E("div", {style:{display:"flex",borderRadius:"8px",overflow:"hidden",border:"1px solid #475569",marginBottom:"18px"}},
+        ["login","register"].map(m => E("button", {key:m, onClick:()=>{setMode(m);setErr("");setOk("");},
+          style:{flex:1,padding:"10px",fontSize:"1rem",fontWeight:600,background:mode===m?"#4f46e5":"none",color:mode===m?"#fff":"#94a3b8",border:"none",cursor:"pointer"}},
+          m==="login"?"Login":"Register"))
       ),
       mode!=="recover" && E(React.Fragment, null,
-        E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Username"), E("input",{className:"inp",placeholder:"your username",value:form.username,onChange:e=>sf("username",e.target.value)})),
-        E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.password,onChange:e=>sf("password",e.target.value)})),
+        E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Username"), E("input",{className:"inp",placeholder:"your username",value:form.username,onChange:e=>sf("username",e.target.value)})),
+        E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.password,onChange:e=>sf("password",e.target.value)})),
         mode==="register" && E(React.Fragment, null,
-          E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>sf("confirm",e.target.value)})),
-          E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Security Question"),
+          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>sf("confirm",e.target.value)})),
+          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Security Question"),
             E("select",{className:"sel",value:form.secQ,onChange:e=>sf("secQ",e.target.value)},
-              SECURITY_QUESTIONS.map((q,i)=>E("option",{key:i,value:i},q))
-            )
+              SECURITY_QUESTIONS.map((q,i)=>E("option",{key:i,value:i},q)))
           ),
-          E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Your Answer"), E("input",{className:"inp",placeholder:"Answer (case insensitive)",value:form.secA,onChange:e=>sf("secA",e.target.value)}))
+          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Your Answer"), E("input",{className:"inp",placeholder:"Answer (case insensitive)",value:form.secA,onChange:e=>sf("secA",e.target.value)}))
         ),
-        err && E("p",{style:{color:"#f87171",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},err),
-        ok  && E("p",{style:{color:"#4ade80",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},ok),
+        err && E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
+        ok  && E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
         E("button",{className:"btn-primary",onClick:handleAuth,disabled:loading}, loading?"Loading...":mode==="login"?"Login →":"Create Account →"),
-        mode==="login" && E("div",{style:{textAlign:"center",marginTop:"8px"}},
-          E("button",{onClick:()=>{setMode("recover");setErr("");setOk("");},style:{color:"#818cf8",fontSize:"0.75rem",textDecoration:"underline",background:"none",border:"none",cursor:"pointer"}},"Forgot password?")
-        )
+        mode==="login" && E("div",{style:{textAlign:"center",marginTop:"10px"}},
+          E("button",{onClick:()=>{setMode("recover");setErr("");setOk("");},
+            style:{color:"#818cf8",fontSize:"0.9rem",textDecoration:"underline",background:"none",border:"none",cursor:"pointer"}},
+            "Forgot password?"))
       ),
       mode==="recover" && E(React.Fragment, null,
-        E("div",{style:{display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"}},
-          E("button",{onClick:()=>{setMode("login");setErr("");setOk("");},style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.2rem"}},"←"),
-          E("span",{style:{color:"#fff",fontWeight:600,fontSize:"0.875rem"}},"Password Recovery")
+        E("div",{style:{display:"flex",alignItems:"center",gap:"8px",marginBottom:"10px"}},
+          E("button",{onClick:()=>{setMode("login");setErr("");setOk("");},style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.3rem"}},"←"),
+          E("span",{style:{color:"#fff",fontWeight:600,fontSize:"1rem"}},"Password Recovery")
         ),
-        E("div",{style:{display:"flex",gap:"4px",marginBottom:"12px"}},
+        E("div",{style:{display:"flex",gap:"4px",marginBottom:"14px"}},
           [1,2,3].map(s=>E("div",{key:s,style:{flex:1,height:"4px",borderRadius:"9999px",background:rec.step>=s?"#6366f1":"#334155"}}))
         ),
-        rec.step===1 && E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Username"), E("input",{className:"inp",placeholder:"your username",value:rec.username,onChange:e=>sr("username",e.target.value)})),
+        rec.step===1 && E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Username"), E("input",{className:"inp",placeholder:"your username",value:rec.username,onChange:e=>sr("username",e.target.value)})),
         rec.step===2 && E(React.Fragment,null,
-          E("div",{style:{background:"#334155",borderRadius:"8px",padding:"12px",marginBottom:"12px"}}, E("p",{style:{color:"#e2e8f0",fontSize:"0.75rem",fontWeight:500}},rec.question)),
-          E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Your Answer"), E("input",{className:"inp",placeholder:"Answer",value:rec.answer,onChange:e=>sr("answer",e.target.value)}))
+          E("div",{style:{background:"#334155",borderRadius:"8px",padding:"12px",marginBottom:"14px"}}, E("p",{style:{color:"#e2e8f0",fontSize:"0.9rem",fontWeight:500}},rec.question)),
+          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Your Answer"), E("input",{className:"inp",placeholder:"Answer",value:rec.answer,onChange:e=>sr("answer",e.target.value)}))
         ),
         rec.step===3 && E(React.Fragment,null,
-          E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:rec.newPass,onChange:e=>sr("newPass",e.target.value)})),
-          E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:rec.confirm,onChange:e=>sr("confirm",e.target.value)}))
+          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:rec.newPass,onChange:e=>sr("newPass",e.target.value)})),
+          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:rec.confirm,onChange:e=>sr("confirm",e.target.value)}))
         ),
-        err && E("p",{style:{color:"#f87171",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},err),
-        ok  && E("p",{style:{color:"#4ade80",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},ok),
+        err && E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
+        ok  && E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
         E("button",{className:"btn-primary",onClick:handleRecover,disabled:loading}, loading?"Loading...":rec.step===3?"Reset Password ✓":"Next →")
       )
-    )
+    ),
+    E("div",{className:"footer"},"Desenvolvido por: José Paulo Tavares")
   );
 }
 
@@ -219,17 +222,17 @@ function ChangePasswordModal({ token, onClose }) {
       setOk("Password changed!"); setTimeout(onClose, 1500);
     } catch(e) { setErr(e.message); } finally { setLoading(false); }
   };
-  return E("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"16px"}},
-    E("div",{className:"card",style:{width:"100%",maxWidth:"384px"}},
-      E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}},
-        E("span",{style:{color:"#fff",fontWeight:600}},"🔑 Change Password"),
+  return E("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"16px"}},
+    E("div",{className:"card",style:{width:"100%",maxWidth:"400px"}},
+      E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px"}},
+        E("span",{style:{color:"#fff",fontWeight:700,fontSize:"1.05rem"}},"🔑 Change Password"),
         E("button",{onClick:onClose,style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.5rem"}},"×")
       ),
-      E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Current Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.current,onChange:e=>setForm(f=>({...f,current:e.target.value}))})),
-      E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
-      E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Confirm New Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
-      err && E("p",{style:{color:"#f87171",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},err),
-      ok  && E("p",{style:{color:"#4ade80",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},ok),
+      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Current Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.current,onChange:e=>setForm(f=>({...f,current:e.target.value}))})),
+      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
+      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Confirm New Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
+      err && E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
+      ok  && E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
       E("button",{className:"btn-primary",onClick:handle,disabled:loading}, loading?"Saving...":"Save Changes")
     )
   );
@@ -249,17 +252,17 @@ function AdminResetModal({ username, token, onClose }) {
       setOk("Password reset!"); setTimeout(onClose, 1500);
     } catch(e) { setErr(e.message); } finally { setLoading(false); }
   };
-  return E("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"16px"}},
-    E("div",{className:"card",style:{width:"100%",maxWidth:"384px"}},
-      E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}},
-        E("span",{style:{color:"#fff",fontWeight:600}},"🔑 Reset — @"+username),
+  return E("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"16px"}},
+    E("div",{className:"card",style:{width:"100%",maxWidth:"400px"}},
+      E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px"}},
+        E("span",{style:{color:"#fff",fontWeight:700,fontSize:"1.05rem"}},"🔑 Reset — @"+username),
         E("button",{onClick:onClose,style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.5rem"}},"×")
       ),
-      E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
-      E("div",{style:{marginBottom:"12px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
-      err && E("p",{style:{color:"#f87171",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},err),
-      ok  && E("p",{style:{color:"#4ade80",fontSize:"0.75rem",textAlign:"center",marginBottom:"8px"}},ok),
-      E("button",{onClick:handle,disabled:loading,style:{width:"100%",padding:"10px",borderRadius:"12px",fontWeight:700,color:"#fff",border:"none",cursor:"pointer",background:"linear-gradient(to right,#dc2626,#ea580c)"}}, loading?"Resetting...":"Reset Password")
+      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
+      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
+      err && E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
+      ok  && E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
+      E("button",{onClick:handle,disabled:loading,style:{width:"100%",padding:"12px",borderRadius:"12px",fontWeight:700,color:"#fff",border:"none",cursor:"pointer",fontSize:"1rem",background:"linear-gradient(to right,#dc2626,#ea580c)"}}, loading?"Resetting...":"Reset Password")
     )
   );
 }
@@ -300,93 +303,93 @@ function StudentApp({ user }) {
 
   return E("div", { style:{minHeight:"100vh",background:"#0f172a"} },
     showPw && E(ChangePasswordModal, { token:user.token, onClose:()=>setShowPw(false) }),
-    E("div", { className:"grad-header", style:{padding:"16px",display:"flex",alignItems:"center",justifyContent:"space-between"} },
+    E("div", { className:"grad-header", style:{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"} },
       E("div", null,
-        E("div", {style:{fontSize:"1.25rem",fontWeight:700,color:"#fff"}}, "🌙 Sleep Diary"),
-        E("div", {style:{color:"#94a3b8",fontSize:"0.75rem"}}, "@"+user.username)
+        E("div", {style:{fontSize:"1.15rem",fontWeight:700,color:"#fff"}}, "🌙 Sleep Diary"),
+        E("div", {style:{color:"#94a3b8",fontSize:"0.85rem"}}, "@"+user.username)
       ),
       E("div", {style:{display:"flex",gap:"8px"}},
         E("button", {className:"btn-outline",onClick:()=>setShowPw(true)}, "🔑 Password"),
         E("button", {className:"btn-outline",onClick:user.logout}, "Logout")
       )
     ),
-    E("div", {style:{display:"flex",borderBottom:"1px solid #334155",background:"#0f172a",overflowX:"auto"}},
+    E("div", {style:{display:"flex",borderBottom:"2px solid #1e293b",background:"#0a0f1e",overflowX:"auto"}},
       TABS.map(([k,l]) => E("button", {key:k, className:"tab-btn"+(tab===k?" active":""), onClick:()=>setTab(k)}, l))
     ),
-    E("div", {style:{padding:"16px",maxWidth:"672px",margin:"0 auto"}},
+    E("div", {style:{padding:"16px 16px 8px",maxWidth:"672px",margin:"0 auto"}},
       loading && E("div", {className:"spinner"}),
       !loading && E(React.Fragment, null,
 
         tab==="log" && E("div", {className:"space-y-4"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:600}}, "Today's Sleep Log"),
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Today's Sleep Log"),
           E("div",null, E("label",{className:"lbl"},"📅 Date"), E("input",{type:"date",className:"inp",value:form.date,onChange:e=>setForm({...form,date:e.target.value})})),
           E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}},
             E("div",null, E("label",{className:"lbl"},"🛏️ Bedtime"), E("input",{type:"time",className:"inp",value:form.bedTime,onChange:e=>setForm({...form,bedTime:e.target.value})})),
             E("div",null, E("label",{className:"lbl"},"⏰ Wake-up"), E("input",{type:"time",className:"inp",value:form.wakeTime,onChange:e=>setForm({...form,wakeTime:e.target.value})}))
           ),
           E("div",{style:{background:"#1e293b",borderRadius:"8px",padding:"12px",textAlign:"center"}},
-            E("span",{style:{color:"#94a3b8"}}, "Duration: "),
-            E("span",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.25rem"}}, calcDur(form.bedTime,form.wakeTime)+"h")
+            E("span",{style:{color:"#94a3b8",fontSize:"0.95rem"}}, "Duration: "),
+            E("span",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.3rem"}}, calcDur(form.bedTime,form.wakeTime)+"h")
           ),
           E("div",null,
             E("label",{className:"lbl"}, "📱 Pre-sleep screen time: ", E("span",{style:{color:"#a5b4fc",fontWeight:700}}, form.screenTime+"h")),
             E("input",{type:"range",min:0,max:6,step:0.5,value:form.screenTime,className:"accent-indigo",onChange:e=>setForm({...form,screenTime:+e.target.value})}),
-            E("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.75rem",color:"#64748b",marginTop:"4px"}}, E("span",null,"0h"), E("span",null,"3h"), E("span",null,"6h"))
+            E("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.85rem",color:"#94a3b8",marginTop:"4px"}}, E("span",null,"0h"), E("span",null,"3h"), E("span",null,"6h"))
           ),
           E("div",null,
             E("label",{className:"lbl"}, "⚡ Morning energy: ", E("span",{style:{color:"#facc15",fontWeight:700}}, form.energy+"/10")),
             E("input",{type:"range",min:1,max:10,step:1,value:form.energy,className:"accent-yellow",onChange:e=>setForm({...form,energy:+e.target.value})}),
-            E("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.75rem",color:"#64748b",marginTop:"4px"}}, E("span",null,"😴 1"), E("span",null,"😐 5"), E("span",null,"⚡ 10"))
+            E("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.85rem",color:"#94a3b8",marginTop:"4px"}}, E("span",null,"😴 1"), E("span",null,"😐 5"), E("span",null,"⚡ 10"))
           ),
-          E("div",null, E("label",{className:"lbl"},"📝 Notes"), E("textarea",{className:"inp",placeholder:"How did you sleep?",value:form.notes,onChange:e=>setForm({...form,notes:e.target.value}),style:{resize:"none",height:"64px"}})),
+          E("div",null, E("label",{className:"lbl"},"📝 Notes"), E("textarea",{className:"inp",placeholder:"How did you sleep?",value:form.notes,onChange:e=>setForm({...form,notes:e.target.value}),style:{resize:"none",height:"72px"}})),
           E("button",{className:"btn-primary",onClick:handleSave}, saved?"✅ Saved!":"💾 Save Entry")
         ),
 
         tab==="history" && E("div", {className:"space-y-3"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:600}}, "Weekly History"),
-          entries.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}}, "No entries yet. Start logging! 🌙"),
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Weekly History"),
+          entries.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "No entries yet. Start logging! 🌙"),
           entries.slice(0,7).map(e => E("div",{key:e.id,className:"card"},
             E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
               E("div",null,
-                E("p",{style:{fontWeight:600,color:"#fff",fontSize:"0.875rem"}}, fmt(e.date)),
-                E("p",{style:{color:"#94a3b8",fontSize:"0.75rem",marginTop:"2px"}}, e.bed_time+" → "+e.wake_time)
+                E("p",{style:{fontWeight:700,color:"#f1f5f9",fontSize:"1rem"}}, fmt(e.date)),
+                E("p",{style:{color:"#94a3b8",fontSize:"0.85rem",marginTop:"2px"}}, e.bed_time+" → "+e.wake_time)
               ),
-              E("button",{onClick:()=>del(e.id),style:{background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:"1rem"}}, "🗑")
+              E("button",{onClick:()=>del(e.id),style:{background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:"1.1rem"}}, "🗑")
             ),
             E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px",marginTop:"12px"}},
-              E("div",{className:"mini-card"}, E("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"0.875rem"}},e.duration+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Sleep")),
-              E("div",{className:"mini-card"}, E("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"0.875rem"}},e.screen_time+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Screen")),
-              E("div",{className:"mini-card"}, E("div",{style:{color:"#fde047",fontWeight:700,fontSize:"0.875rem"}},e.energy+"/10"), E("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Energy"))
+              E("div",{className:"mini-card"}, E("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1rem"}},e.duration+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Sleep")),
+              E("div",{className:"mini-card"}, E("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"1rem"}},e.screen_time+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Screen")),
+              E("div",{className:"mini-card"}, E("div",{style:{color:"#fde047",fontWeight:700,fontSize:"1rem"}},e.energy+"/10"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Energy"))
             ),
-            e.notes && E("p",{style:{color:"#94a3b8",fontSize:"0.75rem",marginTop:"8px",fontStyle:"italic"}}, '"'+e.notes+'"')
+            e.notes && E("p",{style:{color:"#94a3b8",fontSize:"0.85rem",marginTop:"8px",fontStyle:"italic"}}, '"'+e.notes+'"')
           ))
         ),
 
         tab==="charts" && E("div", {className:"space-y-5"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:600}}, "Weekly Charts"),
-          chartData.length<2 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}}, "Log at least 2 days! 📊"),
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Weekly Charts"),
+          chartData.length<2 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "Log at least 2 days! 📊"),
           chartData.length>=2 && E(React.Fragment, null,
             E("div",{className:"card"},
-              E("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}}, "Sleep Duration (hours)"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Sleep Duration (hours)"),
               E(ResponsiveContainer,{width:"100%",height:160},
                 E(BarChart,{data:chartData},
                   E(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),
-                  E(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:9}}),
-                  E(YAxis,{tick:{fill:"#94a3b8",fontSize:9},domain:[0,12]}),
-                  E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:11}}),
+                  E(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:11}}),
+                  E(YAxis,{tick:{fill:"#94a3b8",fontSize:11},domain:[0,12]}),
+                  E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:12}}),
                   E(Bar,{dataKey:"Sleep",fill:"#6366f1",radius:[4,4,0,0]})
                 )
               )
             ),
             E("div",{className:"card"},
-              E("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}}, "Screen Time vs Energy"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Screen Time vs Energy"),
               E(ResponsiveContainer,{width:"100%",height:160},
                 E(LineChart,{data:chartData},
                   E(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),
-                  E(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:9}}),
-                  E(YAxis,{tick:{fill:"#94a3b8",fontSize:9}}),
-                  E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:11}}),
-                  E(Legend,{wrapperStyle:{fontSize:10}}),
+                  E(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:11}}),
+                  E(YAxis,{tick:{fill:"#94a3b8",fontSize:11}}),
+                  E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:12}}),
+                  E(Legend,{wrapperStyle:{fontSize:12}}),
                   E(Line,{type:"monotone",dataKey:"Screen",stroke:"#a78bfa",strokeWidth:2,dot:{r:3},name:"Screen (h)"}),
                   E(Line,{type:"monotone",dataKey:"Energy",stroke:"#fbbf24",strokeWidth:2,dot:{r:3},name:"Energy (/10)"})
                 )
@@ -396,22 +399,23 @@ function StudentApp({ user }) {
         ),
 
         tab==="insights" && E("div", {className:"space-y-3"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:600}}, "Automatic Insights"),
-          genInsights(entries).map((msg,i) => E("div",{key:i,className:"card"}, E("p",{style:{color:"#e2e8f0",fontSize:"0.875rem",lineHeight:1.625}},msg)))
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Automatic Insights"),
+          genInsights(entries).map((msg,i) => E("div",{key:i,className:"card"}, E("p",{style:{color:"#e2e8f0",fontSize:"0.95rem",lineHeight:1.65}},msg)))
         ),
 
         tab==="tips" && E("div", {className:"space-y-3"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:600}}, "Sleep Hygiene Tips"),
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Sleep Hygiene Tips"),
           TIPS.map((t,i) => E("div",{key:i,className:"card",style:{display:"flex",gap:"12px"}},
-            E("span",{style:{fontSize:"1.5rem"}}, t.icon),
+            E("span",{style:{fontSize:"1.6rem"}}, t.icon),
             E("div",null,
-              E("h3",{style:{color:"#fff",fontWeight:600,fontSize:"0.875rem"}}, t.title),
-              E("p",{style:{color:"#94a3b8",fontSize:"0.75rem",marginTop:"4px",lineHeight:1.625}}, t.text)
+              E("h3",{style:{color:"#f1f5f9",fontWeight:700,fontSize:"0.95rem"}}, t.title),
+              E("p",{style:{color:"#94a3b8",fontSize:"0.88rem",marginTop:"4px",lineHeight:1.6}}, t.text)
             )
           ))
         )
       )
-    )
+    ),
+    E("div",{className:"footer"},"Desenvolvido por: José Paulo Tavares")
   );
 }
 
@@ -445,23 +449,23 @@ function AdminApp({ user }) {
 
   return E("div", {style:{minHeight:"100vh",background:"#0f172a"}},
     resetUser && E(AdminResetModal, {username:resetUser, token:user.token, onClose:()=>{setResetUser(null);loadData();}}),
-    E("div",{className:"grad-admin",style:{padding:"16px",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+    E("div",{className:"grad-admin",style:{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}},
       E("div",null,
-        E("div",{style:{fontSize:"1.25rem",fontWeight:700,color:"#fff"}}, "🛡️ Admin Panel"),
-        E("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}}, data.length+" students registered")
+        E("div",{style:{fontSize:"1.15rem",fontWeight:700,color:"#fff"}}, "🛡️ Admin Panel"),
+        E("div",{style:{color:"#94a3b8",fontSize:"0.85rem"}}, data.length+" students registered")
       ),
       E("button",{className:"btn-outline",onClick:user.logout}, "Logout")
     ),
-    E("div",{style:{display:"flex",borderBottom:"1px solid #334155",background:"#0f172a",overflowX:"auto"}},
-      TABS.map(([k,l]) => E("button",{key:k,className:"tab-btn"+(tab===k?" active":""),onClick:()=>setTab(k)},l))
+    E("div",{style:{display:"flex",borderBottom:"2px solid #1e293b",background:"#0a0f1e",overflowX:"auto"}},
+      TABS.map(([k,l])=>E("button",{key:k,className:"tab-btn"+(tab===k?" active":""),onClick:()=>setTab(k)},l))
     ),
-    E("div",{style:{padding:"16px",maxWidth:"672px",margin:"0 auto"}},
+    E("div",{style:{padding:"16px 16px 8px",maxWidth:"672px",margin:"0 auto"}},
       loading && E("div",{className:"spinner"}),
       !loading && E(React.Fragment, null,
 
         tab==="overview" && E("div",{className:"space-y-4"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:600}}, "Group Overview"),
-          allEntries.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}}, "No student data yet."),
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Group Overview"),
+          allEntries.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "No student data yet."),
           allEntries.length>0 && E(React.Fragment, null,
             E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}},
               [
@@ -470,20 +474,20 @@ function AdminApp({ user }) {
                 {label:"Avg Screen", val:avg(allEntries.map(e=>e.screen_time))+"h", icon:"📱",  color:"#d8b4fe"},
                 {label:"Total Logs", val:allEntries.length,                          icon:"📝",  color:"#86efac"},
               ].map((s,i) => E("div",{key:i,className:"stat-card"},
-                E("div",{style:{fontSize:"1.5rem",marginBottom:"4px"}}, s.icon),
-                E("div",{style:{fontSize:"1.25rem",fontWeight:700,color:s.color}}, s.val),
-                E("div",{style:{color:"#94a3b8",fontSize:"0.75rem",marginTop:"4px"}}, s.label)
+                E("div",{style:{fontSize:"1.6rem",marginBottom:"4px"}}, s.icon),
+                E("div",{style:{fontSize:"1.3rem",fontWeight:700,color:s.color}}, s.val),
+                E("div",{style:{color:"#94a3b8",fontSize:"0.85rem",marginTop:"4px"}}, s.label)
               ))
             ),
             groupChart.length>=2 && E("div",{className:"card"},
-              E("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}}, "Student Averages"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Student Averages"),
               E(ResponsiveContainer,{width:"100%",height:200},
                 E(BarChart,{data:groupChart,layout:"vertical"},
                   E(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),
-                  E(XAxis,{type:"number",tick:{fill:"#94a3b8",fontSize:9}}),
-                  E(YAxis,{type:"category",dataKey:"name",tick:{fill:"#94a3b8",fontSize:9},width:60}),
-                  E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:11}}),
-                  E(Legend,{wrapperStyle:{fontSize:10}}),
+                  E(XAxis,{type:"number",tick:{fill:"#94a3b8",fontSize:11}}),
+                  E(YAxis,{type:"category",dataKey:"name",tick:{fill:"#94a3b8",fontSize:11},width:70}),
+                  E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:12}}),
+                  E(Legend,{wrapperStyle:{fontSize:12}}),
                   E(Bar,{dataKey:"Sleep",  fill:"#6366f1",name:"Sleep (h)",    radius:[0,4,4,0]}),
                   E(Bar,{dataKey:"Energy", fill:"#fbbf24",name:"Energy (/10)", radius:[0,4,4,0]}),
                   E(Bar,{dataKey:"Screen", fill:"#a78bfa",name:"Screen (h)",   radius:[0,4,4,0]})
@@ -494,23 +498,23 @@ function AdminApp({ user }) {
         ),
 
         tab==="rankings" && E("div",{className:"space-y-4"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:600}}, "🏆 Rankings"),
-          rankings.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}}, "No data yet."),
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "🏆 Rankings"),
+          rankings.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "No data yet."),
           [
-            {title:"Most Sleep 😴",    key:"avgSleep",  unit:"h avg",   sort:(a,b)=>b.avgSleep-a.avgSleep,   color:"#a5b4fc"},
-            {title:"Best Energy ⚡",   key:"avgEnergy", unit:"/10 avg", sort:(a,b)=>b.avgEnergy-a.avgEnergy, color:"#facc15"},
-            {title:"Least Screen 📵",  key:"avgScreen", unit:"h avg",   sort:(a,b)=>a.avgScreen-b.avgScreen, color:"#d8b4fe"},
-            {title:"Most Consistent 📅",key:"count",    unit:"logs",    sort:(a,b)=>b.count-a.count,         color:"#86efac"},
+            {title:"Most Sleep 😴",     key:"avgSleep",  unit:"h avg",   sort:(a,b)=>b.avgSleep-a.avgSleep,   color:"#a5b4fc"},
+            {title:"Best Energy ⚡",    key:"avgEnergy", unit:"/10 avg", sort:(a,b)=>b.avgEnergy-a.avgEnergy, color:"#facc15"},
+            {title:"Least Screen 📵",   key:"avgScreen", unit:"h avg",   sort:(a,b)=>a.avgScreen-b.avgScreen, color:"#d8b4fe"},
+            {title:"Most Consistent 📅",key:"count",     unit:"logs",    sort:(a,b)=>b.count-a.count,         color:"#86efac"},
           ].map((r,ri) => E("div",{key:ri,className:"card"},
-            E("h3",{style:{color:"#fff",fontWeight:600,fontSize:"0.875rem",marginBottom:"12px"}}, r.title),
+            E("h3",{style:{color:"#f1f5f9",fontWeight:700,fontSize:"0.95rem",marginBottom:"12px"}}, r.title),
             E("div",{className:"space-y-2"},
               [...rankings].sort(r.sort).slice(0,5).map((u,i) =>
                 E("div",{key:u.name,style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
                   E("div",{style:{display:"flex",alignItems:"center",gap:"8px"}},
-                    E("span",{style:{fontSize:"1rem"}}, medal(i)),
-                    E("span",{style:{color:"#e2e8f0",fontSize:"0.875rem"}}, "@"+u.name)
+                    E("span",{style:{fontSize:"1.1rem"}}, medal(i)),
+                    E("span",{style:{color:"#e2e8f0",fontSize:"0.95rem"}}, "@"+u.name)
                   ),
-                  E("span",{style:{color:r.color,fontWeight:700,fontSize:"0.875rem"}}, u[r.key]+" "+r.unit)
+                  E("span",{style:{color:r.color,fontWeight:700,fontSize:"0.95rem"}}, u[r.key]+" "+r.unit)
                 )
               )
             )
@@ -518,44 +522,44 @@ function AdminApp({ user }) {
         ),
 
         tab==="compare" && E("div",{className:"space-y-4"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:600}}, "👥 Collective Charts"),
-          groupChart.length<2 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}}, "Need at least 2 students with data."),
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "👥 Collective Charts"),
+          groupChart.length<2 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "Need at least 2 students with data."),
           groupChart.length>=2 && E(React.Fragment, null,
             E("div",{className:"card"},
-              E("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}}, "Sleep per Student"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Sleep per Student"),
               E(ResponsiveContainer,{width:"100%",height:180},
                 E(BarChart,{data:groupChart},
                   E(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),
-                  E(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:9}}),
-                  E(YAxis,{tick:{fill:"#94a3b8",fontSize:9},domain:[0,12]}),
-                  E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:11}}),
+                  E(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:11}}),
+                  E(YAxis,{tick:{fill:"#94a3b8",fontSize:11},domain:[0,12]}),
+                  E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:12}}),
                   E(Bar,{dataKey:"Sleep",fill:"#6366f1",radius:[4,4,0,0],name:"Avg Sleep (h)"})
                 )
               )
             ),
             E("div",{className:"card"},
-              E("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}}, "Energy vs Screen"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Energy vs Screen"),
               E(ResponsiveContainer,{width:"100%",height:180},
                 E(BarChart,{data:groupChart},
                   E(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),
-                  E(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:9}}),
-                  E(YAxis,{tick:{fill:"#94a3b8",fontSize:9}}),
-                  E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:11}}),
-                  E(Legend,{wrapperStyle:{fontSize:10}}),
+                  E(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:11}}),
+                  E(YAxis,{tick:{fill:"#94a3b8",fontSize:11}}),
+                  E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:12}}),
+                  E(Legend,{wrapperStyle:{fontSize:12}}),
                   E(Bar,{dataKey:"Energy",fill:"#fbbf24",radius:[4,4,0,0],name:"Energy (/10)"}),
                   E(Bar,{dataKey:"Screen",fill:"#a78bfa",radius:[4,4,0,0],name:"Screen (h)"})
                 )
               )
             ),
             E("div",{className:"card"},
-              E("h3",{style:{color:"#cbd5e1",fontSize:"0.75rem",fontWeight:600,marginBottom:"12px"}}, "Radar — Student Profiles"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Radar — Student Profiles"),
               E(ResponsiveContainer,{width:"100%",height:220},
                 E(RadarChart,{data:groupChart},
                   E(PolarGrid,{stroke:"#334155"}),
-                  E(PolarAngleAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:9}}),
+                  E(PolarAngleAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:11}}),
                   E(Radar,{name:"Sleep",  dataKey:"Sleep",  stroke:"#6366f1",fill:"#6366f1",fillOpacity:0.3}),
                   E(Radar,{name:"Energy", dataKey:"Energy", stroke:"#fbbf24",fill:"#fbbf24",fillOpacity:0.3}),
-                  E(Legend,{wrapperStyle:{fontSize:10}})
+                  E(Legend,{wrapperStyle:{fontSize:12}})
                 )
               )
             )
@@ -563,27 +567,28 @@ function AdminApp({ user }) {
         ),
 
         tab==="students" && E("div",{className:"space-y-3"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:600}}, "📋 All Students"),
-          data.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0"}}, "No students registered yet."),
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "📋 All Students"),
+          data.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "No students registered yet."),
           data.map(u => E("div",{key:u.id,className:"card"},
-            E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}},
-              E("span",{style:{color:"#fff",fontWeight:600}}, "@"+u.username),
+            E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}},
+              E("span",{style:{color:"#f1f5f9",fontWeight:700,fontSize:"0.95rem"}}, "@"+u.username),
               E("div",{style:{display:"flex",alignItems:"center",gap:"8px"}},
-                E("span",{style:{color:"#94a3b8",fontSize:"0.75rem"}}, u.entries.length+" log"+(u.entries.length!==1?"s":"")),
-                E("button",{onClick:()=>setResetUser(u.username),style:{fontSize:"0.75rem",color:"#fb923c",border:"1px solid #9a3412",background:"none",borderRadius:"4px",padding:"2px 8px",cursor:"pointer"}}, "🔑 Reset PW")
+                E("span",{style:{color:"#94a3b8",fontSize:"0.85rem"}}, u.entries.length+" log"+(u.entries.length!==1?"s":"")),
+                E("button",{onClick:()=>setResetUser(u.username),style:{fontSize:"0.82rem",color:"#fb923c",border:"1px solid #9a3412",background:"none",borderRadius:"6px",padding:"4px 10px",cursor:"pointer"}}, "🔑 Reset")
               )
             ),
             u.entries.length>0
               ? E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}},
-                  E("div",{className:"mini-card"}, E("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"0.875rem"}},avg(u.entries.map(e=>e.duration))+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Avg Sleep")),
-                  E("div",{className:"mini-card"}, E("div",{style:{color:"#facc15",fontWeight:700,fontSize:"0.875rem"}},avg(u.entries.map(e=>e.energy))+"/10"), E("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Avg Energy")),
-                  E("div",{className:"mini-card"}, E("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"0.875rem"}},avg(u.entries.map(e=>e.screen_time))+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.75rem"}},"Avg Screen"))
+                  E("div",{className:"mini-card"}, E("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1rem"}},avg(u.entries.map(e=>e.duration))+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Avg Sleep")),
+                  E("div",{className:"mini-card"}, E("div",{style:{color:"#facc15",fontWeight:700,fontSize:"1rem"}},avg(u.entries.map(e=>e.energy))+"/10"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Avg Energy")),
+                  E("div",{className:"mini-card"}, E("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"1rem"}},avg(u.entries.map(e=>e.screen_time))+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Avg Screen"))
                 )
-              : E("p",{style:{color:"#64748b",fontSize:"0.75rem"}}, "No entries yet.")
+              : E("p",{style:{color:"#64748b",fontSize:"0.85rem"}}, "No entries yet.")
           ))
         )
       )
-    )
+    ),
+    E("div",{className:"footer"},"Desenvolvido por: José Paulo Tavares")
   );
 }
 
@@ -606,17 +611,6 @@ function App() {
   if (user.isAdmin) return React.createElement(AdminApp,    { user:u });
   return React.createElement(StudentApp, { user:u });
 }
-
-const Footer = () => React.createElement("div", { className:"footer" }, "Desenvolvido por: José Paulo Tavares");
-
-const _AuthScreen = AuthScreen;
-AuthScreen = (props) => React.createElement(React.Fragment, null, React.createElement(_AuthScreen, props), React.createElement(Footer));
-
-const _StudentApp = StudentApp;
-StudentApp = (props) => React.createElement(React.Fragment, null, React.createElement(_StudentApp, props), React.createElement(Footer));
-
-const _AdminApp = AdminApp;
-AdminApp = (props) => React.createElement(React.Fragment, null, React.createElement(_AdminApp, props), React.createElement(Footer));
 
 ReactDOM.render(React.createElement(App), document.getElementById("root"));
 </script>
