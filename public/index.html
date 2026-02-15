@@ -40,20 +40,343 @@
   .spinner { border:3px solid #334155; border-top-color:#6366f1; border-radius:50%; width:32px; height:32px; animation:spin 0.7s linear infinite; margin:40px auto; }
   @keyframes spin { to { transform:rotate(360deg); } }
   .footer { text-align:center; padding:10px 16px; color:#64748b; font-size:0.78rem; border-top:1px solid #1e293b; margin-top:12px; }
+
+  /* Language Selector */
+  .lang-selector { position:fixed; top:12px; right:16px; z-index:1000; }
+  .lang-btn {
+    display:flex; align-items:center; gap:6px;
+    background:rgba(30,41,59,0.95); border:1px solid #475569;
+    border-radius:8px; padding:6px 10px; color:#cbd5e1;
+    font-size:0.82rem; font-weight:600; cursor:pointer;
+    backdrop-filter:blur(8px); transition:border-color 0.15s, color 0.15s;
+    white-space:nowrap;
+  }
+  .lang-btn:hover { border-color:#818cf8; color:#fff; }
+  .lang-flag { font-size:1rem; line-height:1; }
+  .lang-caret { font-size:0.6rem; opacity:0.6; margin-left:1px; }
+  .lang-dropdown {
+    position:absolute; top:calc(100% + 6px); right:0;
+    background:#1e293b; border:1px solid #334155; border-radius:10px;
+    min-width:168px; overflow:hidden;
+    box-shadow:0 8px 28px rgba(0,0,0,0.5);
+    animation:ldFade 0.12s ease;
+  }
+  @keyframes ldFade { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+  .lang-option {
+    display:flex; align-items:center; gap:10px;
+    padding:9px 14px; font-size:0.88rem; color:#cbd5e1;
+    cursor:pointer; transition:background 0.1s, color 0.1s;
+    border:none; background:none; width:100%; text-align:left;
+  }
+  .lang-option:hover { background:#334155; color:#fff; }
+  .lang-option.selected { color:#a5b4fc; background:rgba(99,102,241,0.14); font-weight:600; }
+  .lo-flag { font-size:1.1rem; }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script>
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, useRef } = React;
 const { BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis,
         XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
 
-// ── API helper ────────────────────────────────────────────────────────────────
+/* ── i18n ─────────────────────────────────────────────────────────────────── */
+const LANGUAGES = [
+  { code:"en", label:"English",   flag:"🇬🇧" },
+  { code:"hr", label:"Hrvatski",  flag:"🇭🇷" },
+  { code:"es", label:"Español",   flag:"🇪🇸" },
+  { code:"pt", label:"Português", flag:"🇵🇹" },
+  { code:"tr", label:"Türkçe",    flag:"🇹🇷" },
+];
+
+const T = {
+  en:{
+    appTitle:"Digital Sleep Diary",appSubtitle:"Track sleep · screen time · morning energy",
+    login:"Login",register:"Register",username:"Username",password:"Password",
+    confirmPassword:"Confirm Password",securityQuestion:"Security Question",yourAnswer:"Your Answer",
+    loginBtn:"Login →",createAccountBtn:"Create Account →",forgotPassword:"Forgot password?",
+    passwordRecovery:"Password Recovery",newPassword:"New Password",confirmNewPassword:"Confirm New Password",
+    currentPassword:"Current Password",saveChanges:"Save Changes",resetPassword:"Reset Password",
+    next:"Next →",loading:"Loading...",saving:"Saving...",resetting:"Resetting...",
+    logout:"Logout",changePw:"🔑 Password",
+    fillAllFields:"Please fill all fields.",passwordsDontMatch:"Passwords don't match.",
+    provideSecAnswer:"Please provide a security answer.",enterUsername:"Enter your username.",
+    enterAnswer:"Please enter your answer.",minChars:"Min. 4 characters.",
+    passwordChanged:"Password changed!",passwordReset:"Password reset!",
+    passwordResetLogin:"Password reset! You can now log in.",
+    tabLog:"📝 Log",tabHistory:"📅 History",tabCharts:"📊 Charts",tabInsights:"💡 Insights",tabTips:"🌿 Tips",
+    tabOverview:"📊 Overview",tabRankings:"🏆 Rankings",tabCompare:"👥 Compare",tabStudents:"📋 Students",
+    todayLog:"Today's Sleep Log",date:"📅 Date",bedtime:"🛏️ Bedtime",wakeUp:"⏰ Wake-up",
+    duration:"Duration: ",screenTime:"📱 Pre-sleep screen time: ",morningEnergy:"⚡ Morning energy: ",
+    notes:"📝 Notes",notesPlaceholder:"How did you sleep?",saveEntry:"💾 Save Entry",saved:"✅ Saved!",
+    weeklyHistory:"Weekly History",noEntries:"No entries yet. Start logging! 🌙",
+    sleep:"Sleep",screen:"Screen",energy:"Energy",
+    weeklyCharts:"Weekly Charts",log2days:"Log at least 2 days! 📊",
+    sleepDuration:"Sleep Duration (hours)",screenVsEnergy:"Screen Time vs Energy",
+    autoInsights:"Automatic Insights",log2insights:"Log at least 2 days to get personalized insights!",
+    sleepHygiene:"Sleep Hygiene Tips",adminPanel:"🛡️ Admin Panel",studentsReg:" students registered",
+    groupOverview:"Group Overview",noStudentData:"No student data yet.",
+    avgSleep:"Avg Sleep",avgEnergy:"Avg Energy",avgScreen:"Avg Screen",totalLogs:"Total Logs",
+    studentAverages:"Student Averages",sleepPerStudent:"Sleep per Student",energyVsScreen:"Energy vs Screen",
+    radarProfiles:"Radar — Student Profiles",rankings:"🏆 Rankings",noData:"No data yet.",
+    mostSleep:"Most Sleep 😴",bestEnergy:"Best Energy ⚡",leastScreen:"Least Screen 📵",mostConsistent:"Most Consistent 📅",
+    collectiveCharts:"👥 Collective Charts",need2students:"Need at least 2 students with data.",
+    allStudents:"📋 All Students",noStudents:"No students registered yet.",noEntriesYet:"No entries yet.",
+    hAvg:"h avg",avg10:"/10 avg",logs:"logs",resetBtn:"🔑 Reset",
+    iB7a:"⚠️ Your average sleep is ",iB7b:"h — below the recommended 7–9 hours.",
+    iA7a:"✅ Great! Your average sleep of ",iA7b:"h is within healthy range.",
+    iSca:"💡 On days with ≤1h screen time, your energy was ",iScb:" pts higher!",
+    iHSa:"📱 You average ",iHSb:"h of pre-sleep screen time. Try reducing it.",
+    iHEa:"⚡ Morning energy is strong (avg ",iHEb:"/10). Keep it up!",
+    iLEa:"😴 Morning energy is low (avg ",iLEb:"/10). Better habits may help.",
+    secQ0:"What was the name of your first pet?",secQ1:"What is your mother's maiden name?",
+    secQ2:"What city were you born in?",secQ3:"What was the name of your primary school?",
+    secQ4:"What is your favourite book?",
+    t0t:"Limit Screen Time",t0d:"Avoid screens at least 1 hour before bed. Blue light suppresses melatonin production.",
+    t1t:"Consistent Schedule",t1d:"Go to bed and wake up at the same time every day, even on weekends.",
+    t2t:"Cool Your Room",t2d:"Keep your bedroom between 16–20°C for optimal sleep quality.",
+    t3t:"Avoid Caffeine",t3d:"Avoid caffeine after 2 PM. It can stay in your system for up to 6 hours.",
+    t4t:"Wind Down",t4d:"Try reading, stretching, or meditation before bed to signal your brain it's time to sleep.",
+    t5t:"Darkness Matters",t5d:"Use blackout curtains or a sleep mask. Even small amounts of light can disrupt sleep.",
+    answerHint:"Answer (case insensitive)",usernamePh:"your username",developed:"Desenvolvido por: José Paulo Tavares",
+  },
+  hr:{
+    appTitle:"Digitalni Dnevnik Sna",appSubtitle:"Pratite san · vrijeme zaslona · jutarnju energiju",
+    login:"Prijava",register:"Registracija",username:"Korisničko ime",password:"Lozinka",
+    confirmPassword:"Potvrdi lozinku",securityQuestion:"Sigurnosno pitanje",yourAnswer:"Vaš odgovor",
+    loginBtn:"Prijava →",createAccountBtn:"Stvori račun →",forgotPassword:"Zaboravili ste lozinku?",
+    passwordRecovery:"Oporavak lozinke",newPassword:"Nova lozinka",confirmNewPassword:"Potvrdi novu lozinku",
+    currentPassword:"Trenutna lozinka",saveChanges:"Spremi promjene",resetPassword:"Resetiraj lozinku",
+    next:"Dalje →",loading:"Učitavanje...",saving:"Spremanje...",resetting:"Resetiranje...",
+    logout:"Odjava",changePw:"🔑 Lozinka",
+    fillAllFields:"Molimo ispunite sva polja.",passwordsDontMatch:"Lozinke se ne podudaraju.",
+    provideSecAnswer:"Molimo unesite sigurnosni odgovor.",enterUsername:"Unesite korisničko ime.",
+    enterAnswer:"Molimo unesite odgovor.",minChars:"Min. 4 znaka.",
+    passwordChanged:"Lozinka promijenjena!",passwordReset:"Lozinka resetirana!",
+    passwordResetLogin:"Lozinka resetirana! Sada se možete prijaviti.",
+    tabLog:"📝 Unos",tabHistory:"📅 Povijest",tabCharts:"📊 Grafovi",tabInsights:"💡 Uvidi",tabTips:"🌿 Savjeti",
+    tabOverview:"📊 Pregled",tabRankings:"🏆 Rang lista",tabCompare:"👥 Usporedi",tabStudents:"📋 Studenti",
+    todayLog:"Današnji unos sna",date:"📅 Datum",bedtime:"🛏️ Odlazak na spavanje",wakeUp:"⏰ Buđenje",
+    duration:"Trajanje: ",screenTime:"📱 Vrijeme zaslona prije sna: ",morningEnergy:"⚡ Jutarnja energija: ",
+    notes:"📝 Bilješke",notesPlaceholder:"Kako ste spavali?",saveEntry:"💾 Spremi unos",saved:"✅ Spremljeno!",
+    weeklyHistory:"Tjedna povijest",noEntries:"Nema unosa. Počnite bilježiti! 🌙",
+    sleep:"San",screen:"Zaslon",energy:"Energija",
+    weeklyCharts:"Tjedni grafovi",log2days:"Unesite najmanje 2 dana! 📊",
+    sleepDuration:"Trajanje sna (sati)",screenVsEnergy:"Zaslon vs Energija",
+    autoInsights:"Automatski uvidi",log2insights:"Unesite najmanje 2 dana za personalizirane uvide!",
+    sleepHygiene:"Savjeti za higijenu sna",adminPanel:"🛡️ Admin panel",studentsReg:" studenata registrirano",
+    groupOverview:"Grupni pregled",noStudentData:"Nema podataka o studentima.",
+    avgSleep:"Prosj. san",avgEnergy:"Prosj. energija",avgScreen:"Prosj. zaslon",totalLogs:"Ukupno unosa",
+    studentAverages:"Prosjeci studenata",sleepPerStudent:"San po studentu",energyVsScreen:"Energija vs Zaslon",
+    radarProfiles:"Radar — Profili studenata",rankings:"🏆 Rang lista",noData:"Nema podataka.",
+    mostSleep:"Najviše sna 😴",bestEnergy:"Najbolja energija ⚡",leastScreen:"Najmanje zaslona 📵",mostConsistent:"Najdosljedniji 📅",
+    collectiveCharts:"👥 Skupni grafovi",need2students:"Potrebna su najmanje 2 studenta s podacima.",
+    allStudents:"📋 Svi studenti",noStudents:"Nema registriranih studenata.",noEntriesYet:"Nema unosa.",
+    hAvg:"h prosjek",avg10:"/10 prosjek",logs:"unosa",resetBtn:"🔑 Reset",
+    iB7a:"⚠️ Vaš prosječni san je ",iB7b:"h — ispod preporučenih 7–9 sati.",
+    iA7a:"✅ Odlično! Vaš prosječni san od ",iA7b:"h je unutar zdravog raspona.",
+    iSca:"💡 Dana s ≤1h zaslona, vaša energija bila je ",iScb:" boda viša!",
+    iHSa:"📱 Prosjek vam je ",iHSb:"h zaslona prije sna. Pokušajte smanjiti.",
+    iHEa:"⚡ Jutarnja energija je jaka (prosjek ",iHEb:"/10). Nastavite tako!",
+    iLEa:"😴 Jutarnja energija je niska (prosjek ",iLEb:"/10). Bolje navike mogu pomoći.",
+    secQ0:"Kako se zvao vaš prvi ljubimac?",secQ1:"Koje je djevojačko prezime vaše majke?",
+    secQ2:"U kojemu gradu ste rođeni?",secQ3:"Kako se zvala vaša osnovna škola?",secQ4:"Koja je vaša omiljena knjiga?",
+    t0t:"Ograničite ekrane",t0d:"Izbjegavajte zaslone barem 1 sat prije spavanja. Plavo svjetlo smanjuje melatonin.",
+    t1t:"Dosljedan raspored",t1d:"Idite spavati i budite se u isto vrijeme svaki dan, uključujući vikende.",
+    t2t:"Rashladite sobu",t2d:"Održavajte temperaturu spavaće sobe između 16–20°C za optimalan san.",
+    t3t:"Izbjegavajte kofein",t3d:"Izbjegavajte kofein nakon 14h. Može ostati u organizmu do 6 sati.",
+    t4t:"Opustite se",t4d:"Pokušajte čitati, istezati se ili meditirati prije spavanja.",
+    t5t:"Tama je važna",t5d:"Koristite zamračujuće zavjese ili masku za spavanje. Čak i mala količina svjetla može poremetiti san.",
+    answerHint:"Odgovor (nije osjetljivo na veličinu slova)",usernamePh:"vaše korisničko ime",developed:"Desenvolvido por: José Paulo Tavares",
+  },
+  es:{
+    appTitle:"Diario Digital del Sueño",appSubtitle:"Registra sueño · tiempo de pantalla · energía matutina",
+    login:"Iniciar sesión",register:"Registrarse",username:"Usuario",password:"Contraseña",
+    confirmPassword:"Confirmar contraseña",securityQuestion:"Pregunta de seguridad",yourAnswer:"Tu respuesta",
+    loginBtn:"Iniciar sesión →",createAccountBtn:"Crear cuenta →",forgotPassword:"¿Olvidaste tu contraseña?",
+    passwordRecovery:"Recuperar contraseña",newPassword:"Nueva contraseña",confirmNewPassword:"Confirmar nueva contraseña",
+    currentPassword:"Contraseña actual",saveChanges:"Guardar cambios",resetPassword:"Restablecer contraseña",
+    next:"Siguiente →",loading:"Cargando...",saving:"Guardando...",resetting:"Restableciendo...",
+    logout:"Cerrar sesión",changePw:"🔑 Contraseña",
+    fillAllFields:"Por favor, rellena todos los campos.",passwordsDontMatch:"Las contraseñas no coinciden.",
+    provideSecAnswer:"Por favor, proporciona una respuesta de seguridad.",enterUsername:"Introduce tu nombre de usuario.",
+    enterAnswer:"Por favor, introduce tu respuesta.",minChars:"Mín. 4 caracteres.",
+    passwordChanged:"¡Contraseña cambiada!",passwordReset:"¡Contraseña restablecida!",
+    passwordResetLogin:"¡Contraseña restablecida! Ya puedes iniciar sesión.",
+    tabLog:"📝 Registro",tabHistory:"📅 Historial",tabCharts:"📊 Gráficos",tabInsights:"💡 Análisis",tabTips:"🌿 Consejos",
+    tabOverview:"📊 Resumen",tabRankings:"🏆 Clasificación",tabCompare:"👥 Comparar",tabStudents:"📋 Alumnos",
+    todayLog:"Registro de sueño de hoy",date:"📅 Fecha",bedtime:"🛏️ Hora de dormir",wakeUp:"⏰ Despertar",
+    duration:"Duración: ",screenTime:"📱 Tiempo de pantalla antes de dormir: ",morningEnergy:"⚡ Energía matutina: ",
+    notes:"📝 Notas",notesPlaceholder:"¿Cómo dormiste?",saveEntry:"💾 Guardar registro",saved:"✅ ¡Guardado!",
+    weeklyHistory:"Historial semanal",noEntries:"Sin registros. ¡Comienza a anotar! 🌙",
+    sleep:"Sueño",screen:"Pantalla",energy:"Energía",
+    weeklyCharts:"Gráficos semanales",log2days:"¡Registra al menos 2 días! 📊",
+    sleepDuration:"Duración del sueño (horas)",screenVsEnergy:"Pantalla vs Energía",
+    autoInsights:"Análisis automático",log2insights:"¡Registra al menos 2 días para análisis personalizados!",
+    sleepHygiene:"Consejos de higiene del sueño",adminPanel:"🛡️ Panel de administración",studentsReg:" alumnos registrados",
+    groupOverview:"Resumen del grupo",noStudentData:"Sin datos de alumnos.",
+    avgSleep:"Sueño medio",avgEnergy:"Energía media",avgScreen:"Pantalla media",totalLogs:"Total registros",
+    studentAverages:"Promedios de alumnos",sleepPerStudent:"Sueño por alumno",energyVsScreen:"Energía vs Pantalla",
+    radarProfiles:"Radar — Perfiles de alumnos",rankings:"🏆 Clasificación",noData:"Sin datos.",
+    mostSleep:"Más sueño 😴",bestEnergy:"Mejor energía ⚡",leastScreen:"Menos pantalla 📵",mostConsistent:"Más constante 📅",
+    collectiveCharts:"👥 Gráficos colectivos",need2students:"Se necesitan al menos 2 alumnos con datos.",
+    allStudents:"📋 Todos los alumnos",noStudents:"No hay alumnos registrados.",noEntriesYet:"Sin registros.",
+    hAvg:"h prom.",avg10:"/10 prom.",logs:"registros",resetBtn:"🔑 Resetear",
+    iB7a:"⚠️ Tu sueño promedio es ",iB7b:"h — por debajo de las 7–9 horas recomendadas.",
+    iA7a:"✅ ¡Genial! Tu sueño promedio de ",iA7b:"h está dentro del rango saludable.",
+    iSca:"💡 En días con ≤1h de pantalla, tu energía fue ",iScb:" pts más alta!",
+    iHSa:"📱 Promedias ",iHSb:"h de pantalla antes de dormir. Intenta reducirlo.",
+    iHEa:"⚡ La energía matutina es alta (prom. ",iHEb:"/10). ¡Sigue así!",
+    iLEa:"😴 La energía matutina es baja (prom. ",iLEb:"/10). Mejores hábitos pueden ayudar.",
+    secQ0:"¿Cómo se llamaba tu primera mascota?",secQ1:"¿Cuál es el apellido de soltera de tu madre?",
+    secQ2:"¿En qué ciudad naciste?",secQ3:"¿Cómo se llamaba tu escuela primaria?",secQ4:"¿Cuál es tu libro favorito?",
+    t0t:"Limita el tiempo de pantalla",t0d:"Evita las pantallas al menos 1 hora antes de dormir. La luz azul suprime la melatonina.",
+    t1t:"Horario constante",t1d:"Acuéstate y levántate a la misma hora todos los días, incluso los fines de semana.",
+    t2t:"Enfría tu habitación",t2d:"Mantén tu dormitorio entre 16–20°C para una calidad de sueño óptima.",
+    t3t:"Evita la cafeína",t3d:"Evita la cafeína después de las 14h. Puede permanecer en tu sistema hasta 6 horas.",
+    t4t:"Desconéctate",t4d:"Prueba leer, estirarte o meditar antes de dormir.",
+    t5t:"La oscuridad importa",t5d:"Usa cortinas opacas o antifaz. Incluso pequeñas cantidades de luz pueden alterar el sueño.",
+    answerHint:"Respuesta (sin distinción de mayúsculas)",usernamePh:"tu nombre de usuario",developed:"Desenvolvido por: José Paulo Tavares",
+  },
+  pt:{
+    appTitle:"Diário Digital do Sono",appSubtitle:"Registe o sono · tempo de ecrã · energia matinal",
+    login:"Entrar",register:"Registar",username:"Nome de utilizador",password:"Palavra-passe",
+    confirmPassword:"Confirmar palavra-passe",securityQuestion:"Pergunta de segurança",yourAnswer:"A sua resposta",
+    loginBtn:"Entrar →",createAccountBtn:"Criar conta →",forgotPassword:"Esqueceu a palavra-passe?",
+    passwordRecovery:"Recuperação de palavra-passe",newPassword:"Nova palavra-passe",confirmNewPassword:"Confirmar nova palavra-passe",
+    currentPassword:"Palavra-passe atual",saveChanges:"Guardar alterações",resetPassword:"Repor palavra-passe",
+    next:"Seguinte →",loading:"A carregar...",saving:"A guardar...",resetting:"A repor...",
+    logout:"Terminar sessão",changePw:"🔑 Palavra-passe",
+    fillAllFields:"Por favor, preencha todos os campos.",passwordsDontMatch:"As palavras-passe não coincidem.",
+    provideSecAnswer:"Por favor, forneça uma resposta de segurança.",enterUsername:"Introduza o nome de utilizador.",
+    enterAnswer:"Por favor, introduza a sua resposta.",minChars:"Mín. 4 caracteres.",
+    passwordChanged:"Palavra-passe alterada!",passwordReset:"Palavra-passe reposta!",
+    passwordResetLogin:"Palavra-passe reposta! Pode agora iniciar sessão.",
+    tabLog:"📝 Registo",tabHistory:"📅 Histórico",tabCharts:"📊 Gráficos",tabInsights:"💡 Análise",tabTips:"🌿 Dicas",
+    tabOverview:"📊 Visão Geral",tabRankings:"🏆 Classificação",tabCompare:"👥 Comparar",tabStudents:"📋 Alunos",
+    todayLog:"Registo de sono de hoje",date:"📅 Data",bedtime:"🛏️ Hora de deitar",wakeUp:"⏰ Hora de acordar",
+    duration:"Duração: ",screenTime:"📱 Tempo de ecrã antes de dormir: ",morningEnergy:"⚡ Energia matinal: ",
+    notes:"📝 Notas",notesPlaceholder:"Como dormiu?",saveEntry:"💾 Guardar registo",saved:"✅ Guardado!",
+    weeklyHistory:"Histórico semanal",noEntries:"Sem registos. Comece a registar! 🌙",
+    sleep:"Sono",screen:"Ecrã",energy:"Energia",
+    weeklyCharts:"Gráficos semanais",log2days:"Registe pelo menos 2 dias! 📊",
+    sleepDuration:"Duração do sono (horas)",screenVsEnergy:"Ecrã vs Energia",
+    autoInsights:"Análise automática",log2insights:"Registe pelo menos 2 dias para análises personalizadas!",
+    sleepHygiene:"Dicas de higiene do sono",adminPanel:"🛡️ Painel de administração",studentsReg:" alunos registados",
+    groupOverview:"Visão geral do grupo",noStudentData:"Sem dados de alunos.",
+    avgSleep:"Sono médio",avgEnergy:"Energia média",avgScreen:"Ecrã médio",totalLogs:"Total de registos",
+    studentAverages:"Médias dos alunos",sleepPerStudent:"Sono por aluno",energyVsScreen:"Energia vs Ecrã",
+    radarProfiles:"Radar — Perfis dos alunos",rankings:"🏆 Classificação",noData:"Sem dados.",
+    mostSleep:"Mais sono 😴",bestEnergy:"Melhor energia ⚡",leastScreen:"Menos ecrã 📵",mostConsistent:"Mais consistente 📅",
+    collectiveCharts:"👥 Gráficos coletivos",need2students:"São necessários pelo menos 2 alunos com dados.",
+    allStudents:"📋 Todos os alunos",noStudents:"Nenhum aluno registado.",noEntriesYet:"Sem registos.",
+    hAvg:"h média",avg10:"/10 média",logs:"registos",resetBtn:"🔑 Repor",
+    iB7a:"⚠️ O seu sono médio é ",iB7b:"h — abaixo das 7–9 horas recomendadas.",
+    iA7a:"✅ Excelente! O seu sono médio de ",iA7b:"h está dentro do intervalo saudável.",
+    iSca:"💡 Nos dias com ≤1h de ecrã, a sua energia foi ",iScb:" pts mais alta!",
+    iHSa:"📱 Em média, tem ",iHSb:"h de ecrã antes de dormir. Tente reduzir.",
+    iHEa:"⚡ A energia matinal é boa (média ",iHEb:"/10). Continue assim!",
+    iLEa:"😴 A energia matinal é baixa (média ",iLEb:"/10). Melhores hábitos podem ajudar.",
+    secQ0:"Como se chamava o seu primeiro animal de estimação?",secQ1:"Qual é o apelido de solteira da sua mãe?",
+    secQ2:"Em que cidade nasceu?",secQ3:"Como se chamava a sua escola primária?",secQ4:"Qual é o seu livro preferido?",
+    t0t:"Limite o tempo de ecrã",t0d:"Evite ecrãs pelo menos 1 hora antes de dormir. A luz azul suprime a produção de melatonina.",
+    t1t:"Horário consistente",t1d:"Deite-se e acorde à mesma hora todos os dias, incluindo fins de semana.",
+    t2t:"Arrefeça o quarto",t2d:"Mantenha o quarto entre 16–20°C para uma qualidade de sono ideal.",
+    t3t:"Evite a cafeína",t3d:"Evite cafeína após as 14h. Pode permanecer no organismo até 6 horas.",
+    t4t:"Desacelere",t4d:"Tente ler, fazer alongamentos ou meditar antes de dormir para preparar o cérebro para descansar.",
+    t5t:"A escuridão importa",t5d:"Use cortinas blackout ou máscara de dormir. Mesmo pequenas quantidades de luz podem perturbar o sono.",
+    answerHint:"Resposta (não sensível a maiúsculas)",usernamePh:"o seu nome de utilizador",developed:"Desenvolvido por: José Paulo Tavares",
+  },
+  tr:{
+    appTitle:"Dijital Uyku Günlüğü",appSubtitle:"Uyku · ekran süresi · sabah enerjisi takibi",
+    login:"Giriş yap",register:"Kayıt ol",username:"Kullanıcı adı",password:"Şifre",
+    confirmPassword:"Şifreyi onayla",securityQuestion:"Güvenlik sorusu",yourAnswer:"Cevabınız",
+    loginBtn:"Giriş yap →",createAccountBtn:"Hesap oluştur →",forgotPassword:"Şifremi unuttum?",
+    passwordRecovery:"Şifre kurtarma",newPassword:"Yeni şifre",confirmNewPassword:"Yeni şifreyi onayla",
+    currentPassword:"Mevcut şifre",saveChanges:"Değişiklikleri kaydet",resetPassword:"Şifreyi sıfırla",
+    next:"İleri →",loading:"Yükleniyor...",saving:"Kaydediliyor...",resetting:"Sıfırlanıyor...",
+    logout:"Çıkış yap",changePw:"🔑 Şifre",
+    fillAllFields:"Lütfen tüm alanları doldurun.",passwordsDontMatch:"Şifreler eşleşmiyor.",
+    provideSecAnswer:"Lütfen bir güvenlik cevabı girin.",enterUsername:"Kullanıcı adınızı girin.",
+    enterAnswer:"Lütfen cevabınızı girin.",minChars:"En az 4 karakter.",
+    passwordChanged:"Şifre değiştirildi!",passwordReset:"Şifre sıfırlandı!",
+    passwordResetLogin:"Şifre sıfırlandı! Artık giriş yapabilirsiniz.",
+    tabLog:"📝 Kayıt",tabHistory:"📅 Geçmiş",tabCharts:"📊 Grafikler",tabInsights:"💡 Analizler",tabTips:"🌿 İpuçları",
+    tabOverview:"📊 Genel Bakış",tabRankings:"🏆 Sıralama",tabCompare:"👥 Karşılaştır",tabStudents:"📋 Öğrenciler",
+    todayLog:"Bugünün uyku kaydı",date:"📅 Tarih",bedtime:"🛏️ Yatış saati",wakeUp:"⏰ Uyanış saati",
+    duration:"Süre: ",screenTime:"📱 Uyku öncesi ekran süresi: ",morningEnergy:"⚡ Sabah enerjisi: ",
+    notes:"📝 Notlar",notesPlaceholder:"Nasıl uyudunuz?",saveEntry:"💾 Kaydı kaydet",saved:"✅ Kaydedildi!",
+    weeklyHistory:"Haftalık geçmiş",noEntries:"Kayıt yok. Kaydetmeye başlayın! 🌙",
+    sleep:"Uyku",screen:"Ekran",energy:"Enerji",
+    weeklyCharts:"Haftalık grafikler",log2days:"En az 2 gün kaydedin! 📊",
+    sleepDuration:"Uyku süresi (saat)",screenVsEnergy:"Ekran vs Enerji",
+    autoInsights:"Otomatik analizler",log2insights:"Kişiselleştirilmiş analizler için en az 2 gün kaydedin!",
+    sleepHygiene:"Uyku hijyeni ipuçları",adminPanel:"🛡️ Yönetici paneli",studentsReg:" öğrenci kayıtlı",
+    groupOverview:"Grup genel bakışı",noStudentData:"Henüz öğrenci verisi yok.",
+    avgSleep:"Ort. uyku",avgEnergy:"Ort. enerji",avgScreen:"Ort. ekran",totalLogs:"Toplam kayıt",
+    studentAverages:"Öğrenci ortalamaları",sleepPerStudent:"Öğrenci başına uyku",energyVsScreen:"Enerji vs Ekran",
+    radarProfiles:"Radar — Öğrenci profilleri",rankings:"🏆 Sıralama",noData:"Henüz veri yok.",
+    mostSleep:"En fazla uyku 😴",bestEnergy:"En iyi enerji ⚡",leastScreen:"En az ekran 📵",mostConsistent:"En tutarlı 📅",
+    collectiveCharts:"👥 Toplu grafikler",need2students:"En az 2 öğrenci verisi gerekli.",
+    allStudents:"📋 Tüm öğrenciler",noStudents:"Kayıtlı öğrenci yok.",noEntriesYet:"Kayıt yok.",
+    hAvg:"s ort.",avg10:"/10 ort.",logs:"kayıt",resetBtn:"🔑 Sıfırla",
+    iB7a:"⚠️ Ortalama uyku süreniz ",iB7b:"s — önerilen 7–9 saatin altında.",
+    iA7a:"✅ Harika! Ortalama uyku süreniz ",iA7b:"s sağlıklı aralıkta.",
+    iSca:"💡 ≤1s ekran süreli günlerde enerjiniz ",iScb:" puan daha yüksekti!",
+    iHSa:"📱 Uyku öncesi ortalama ",iHSb:"s ekran süresi var. Azaltmayı deneyin.",
+    iHEa:"⚡ Sabah enerjisi güçlü (ort. ",iHEb:"/10). Böyle devam!",
+    iLEa:"😴 Sabah enerjisi düşük (ort. ",iLEb:"/10). Daha iyi alışkanlıklar yardımcı olabilir.",
+    secQ0:"İlk evcil hayvanınızın adı neydi?",secQ1:"Annenizin kızlık soyadı nedir?",
+    secQ2:"Hangi şehirde doğdunuz?",secQ3:"İlköğretim okulunuzun adı neydi?",secQ4:"En sevdiğiniz kitap nedir?",
+    t0t:"Ekran süresini sınırlayın",t0d:"Yatmadan en az 1 saat önce ekranlardan uzak durun. Mavi ışık melatonin üretimini baskılar.",
+    t1t:"Tutarlı program",t1d:"Her gün, hafta sonları da dahil olmak üzere aynı saatte yatıp kalkın.",
+    t2t:"Odanızı serin tutun",t2d:"Optimum uyku kalitesi için yatak odanızı 16–20°C arasında tutun.",
+    t3t:"Kafeinden kaçının",t3d:"Öğleden sonra 14:00'den sonra kafein almayın. Vücudunuzda 6 saate kadar kalabilir.",
+    t4t:"Sakinleşin",t4d:"Beyninize uyku sinyali vermek için yatmadan önce okuma, esneme veya meditasyon yapmayı deneyin.",
+    t5t:"Karanlık önemlidir",t5d:"Karartma perdesi veya uyku maskesi kullanın. Küçük miktarda ışık bile uykuyu bozabilir.",
+    answerHint:"Cevap (büyük/küçük harf duyarsız)",usernamePh:"kullanıcı adınız",developed:"Desenvolvido por: José Paulo Tavares",
+  }
+};
+
+/* ── Language Context ─────────────────────────────────────────────────────── */
+const LangCtx = React.createContext({ lang:"en", t: k => k });
+
+/* ── LanguageSelector ─────────────────────────────────────────────────────── */
+function LanguageSelector({ lang, setLang }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const E = React.createElement;
+  const cur = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  return E("div", { className:"lang-selector", ref },
+    E("button", { className:"lang-btn", onClick:()=>setOpen(o=>!o) },
+      E("span", { className:"lang-flag" }, cur.flag),
+      E("span", null, cur.label),
+      E("span", { className:"lang-caret" }, open?"▲":"▼")
+    ),
+    open && E("div", { className:"lang-dropdown" },
+      LANGUAGES.map(l => E("button", {
+        key:l.code, className:"lang-option"+(l.code===lang?" selected":""),
+        onClick:()=>{ setLang(l.code); setOpen(false); }
+      },
+        E("span",{className:"lo-flag"}, l.flag),
+        E("span",null, l.label)
+      ))
+    )
+  );
+}
+
+/* ── API ──────────────────────────────────────────────────────────────────── */
 const API = async (method, path, body, token) => {
   const res = await fetch("/api" + path, {
     method,
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) },
+    headers: { "Content-Type":"application/json", ...(token?{Authorization:"Bearer "+token}:{}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json();
@@ -61,316 +384,290 @@ const API = async (method, path, body, token) => {
   return data;
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = d => new Date(d).toLocaleDateString("en-GB", { weekday:"short", day:"2-digit", month:"short" });
-const timeToH = t => { const [h,m] = t.split(":").map(Number); return h + m/60; };
-const calcDur = (bed, wake) => { let b=timeToH(bed), w=timeToH(wake); if(w<=b) w+=24; return Math.round((w-b)*10)/10; };
+/* ── Helpers ──────────────────────────────────────────────────────────────── */
+const fmt = d => new Date(d).toLocaleDateString("en-GB",{weekday:"short",day:"2-digit",month:"short"});
+const timeToH = t => { const [h,m]=t.split(":").map(Number); return h+m/60; };
+const calcDur = (bed,wake) => { let b=timeToH(bed),w=timeToH(wake); if(w<=b)w+=24; return Math.round((w-b)*10)/10; };
 const avg = arr => arr.length ? +(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0;
 
-const SECURITY_QUESTIONS = [
-  "What was the name of your first pet?",
-  "What is your mother's maiden name?",
-  "What city were you born in?",
-  "What was the name of your primary school?",
-  "What is your favourite book?",
-];
-
-const TIPS = [
-  { icon:"📵", title:"Limit Screen Time", text:"Avoid screens at least 1 hour before bed. Blue light suppresses melatonin production." },
-  { icon:"⏰", title:"Consistent Schedule", text:"Go to bed and wake up at the same time every day, even on weekends." },
-  { icon:"🌡️", title:"Cool Your Room", text:"Keep your bedroom between 16–20°C for optimal sleep quality." },
-  { icon:"☕", title:"Avoid Caffeine", text:"Avoid caffeine after 2 PM. It can stay in your system for up to 6 hours." },
-  { icon:"🧘", title:"Wind Down", text:"Try reading, stretching, or meditation before bed to signal your brain it's time to sleep." },
-  { icon:"🌙", title:"Darkness Matters", text:"Use blackout curtains or a sleep mask. Even small amounts of light can disrupt sleep." },
-];
-
-const genInsights = entries => {
-  if (entries.length < 2) return ["Log at least 2 days to get personalized insights!"];
-  const msgs = [];
-  const as = avg(entries.map(e=>e.duration));
-  const ae = avg(entries.map(e=>e.energy));
-  const asc = avg(entries.map(e=>e.screen_time));
-  if (as < 7) msgs.push("⚠️ Your average sleep is " + as + "h — below the recommended 7–9 hours.");
-  else msgs.push("✅ Great! Your average sleep of " + as + "h is within healthy range.");
-  const low = entries.filter(e=>e.screen_time<=1), high = entries.filter(e=>e.screen_time>1);
-  if (low.length && high.length) {
-    const eL = avg(low.map(e=>e.energy)), eH = avg(high.map(e=>e.energy));
-    if (eL > eH) msgs.push("💡 On days with ≤1h screen time, your energy was " + (eL-eH).toFixed(1) + " pts higher!");
-  }
-  if (asc > 2) msgs.push("📱 You average " + asc + "h of pre-sleep screen time. Try reducing it.");
-  if (ae >= 7) msgs.push("⚡ Morning energy is strong (avg " + ae + "/10). Keep it up!");
-  else if (ae < 5) msgs.push("😴 Morning energy is low (avg " + ae + "/10). Better habits may help.");
+const genInsights = (entries, t) => {
+  if (entries.length < 2) return [t("log2insights")];
+  const msgs=[], as=avg(entries.map(e=>e.duration)), ae=avg(entries.map(e=>e.energy)), asc=avg(entries.map(e=>e.screen_time));
+  msgs.push(as<7 ? t("iB7a")+as+t("iB7b") : t("iA7a")+as+t("iA7b"));
+  const low=entries.filter(e=>e.screen_time<=1), high=entries.filter(e=>e.screen_time>1);
+  if(low.length&&high.length){const eL=avg(low.map(e=>e.energy)),eH=avg(high.map(e=>e.energy)); if(eL>eH)msgs.push(t("iSca")+(eL-eH).toFixed(1)+t("iScb"));}
+  if(asc>2)msgs.push(t("iHSa")+asc+t("iHSb"));
+  if(ae>=7)msgs.push(t("iHEa")+ae+t("iHEb")); else if(ae<5)msgs.push(t("iLEa")+ae+t("iLEb"));
   return msgs;
 };
 
-// ── AuthScreen ────────────────────────────────────────────────────────────────
+/* ── AuthScreen ───────────────────────────────────────────────────────────── */
 function AuthScreen({ onLogin }) {
-  const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ username:"", password:"", confirm:"", secQ:0, secA:"" });
-  const [rec,  setRec]  = useState({ step:1, username:"", question:"", answer:"", newPass:"", confirm:"" });
-  const [err,  setErr]  = useState("");
-  const [ok,   setOk]   = useState("");
-  const [loading, setLoading] = useState(false);
-  const sf = (k,v) => setForm(f=>({...f,[k]:v}));
-  const sr = (k,v) => setRec(r=>({...r,[k]:v}));
+  const { t } = React.useContext(LangCtx);
+  const [mode,setMode]=useState("login");
+  const [form,setForm]=useState({username:"",password:"",confirm:"",secQ:0,secA:""});
+  const [rec,setRec]=useState({step:1,username:"",question:"",answer:"",newPass:"",confirm:""});
+  const [err,setErr]=useState(""); const [ok,setOk]=useState(""); const [loading,setLoading]=useState(false);
+  const sf=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const sr=(k,v)=>setRec(r=>({...r,[k]:v}));
+  const SECQ=[t("secQ0"),t("secQ1"),t("secQ2"),t("secQ3"),t("secQ4")];
 
   const handleAuth = async () => {
     setErr(""); setOk(""); setLoading(true);
     try {
-      const u = form.username.trim().toLowerCase(), p = form.password;
-      if (!u || !p) throw new Error("Please fill all fields.");
-      if (mode==="register" && p!==form.confirm) throw new Error("Passwords don't match.");
-      if (mode==="register" && !form.secA.trim()) throw new Error("Please provide a security answer.");
-      const body = mode==="login"
-        ? { username:u, password:p }
-        : { username:u, password:p, secQ:+form.secQ, secA:form.secA.trim() };
-      const data = await API("POST", mode==="login" ? "/login" : "/register", body);
-      localStorage.setItem("sd_token", data.token);
-      localStorage.setItem("sd_user", JSON.stringify({ username:data.username, isAdmin:data.isAdmin }));
-      onLogin({ username:data.username, isAdmin:data.isAdmin, token:data.token });
-    } catch(e) { setErr(e.message); } finally { setLoading(false); }
+      const u=form.username.trim().toLowerCase(), p=form.password;
+      if(!u||!p) throw new Error(t("fillAllFields"));
+      if(mode==="register"&&p!==form.confirm) throw new Error(t("passwordsDontMatch"));
+      if(mode==="register"&&!form.secA.trim()) throw new Error(t("provideSecAnswer"));
+      const body=mode==="login"?{username:u,password:p}:{username:u,password:p,secQ:+form.secQ,secA:form.secA.trim()};
+      const data=await API("POST",mode==="login"?"/login":"/register",body);
+      localStorage.setItem("sd_token",data.token);
+      localStorage.setItem("sd_user",JSON.stringify({username:data.username,isAdmin:data.isAdmin}));
+      onLogin({username:data.username,isAdmin:data.isAdmin,token:data.token});
+    } catch(e){setErr(e.message);} finally{setLoading(false);}
   };
 
   const handleRecover = async () => {
     setErr(""); setOk(""); setLoading(true);
     try {
-      if (rec.step===1) {
-        if (!rec.username.trim()) throw new Error("Enter your username.");
-        const data = await API("POST", "/recover/question", { username:rec.username.trim() });
-        setRec(r=>({...r, step:2, question:data.question}));
-      } else if (rec.step===2) {
-        if (!rec.answer.trim()) throw new Error("Please enter your answer.");
-        setRec(r=>({...r, step:3}));
+      if(rec.step===1){
+        if(!rec.username.trim()) throw new Error(t("enterUsername"));
+        const data=await API("POST","/recover/question",{username:rec.username.trim()});
+        setRec(r=>({...r,step:2,question:data.question}));
+      } else if(rec.step===2){
+        if(!rec.answer.trim()) throw new Error(t("enterAnswer"));
+        setRec(r=>({...r,step:3}));
       } else {
-        if (rec.newPass.length < 4) throw new Error("Min. 4 characters.");
-        if (rec.newPass !== rec.confirm) throw new Error("Passwords don't match.");
-        await API("POST", "/recover/verify", { username:rec.username.trim(), answer:rec.answer.trim(), newPassword:rec.newPass });
-        setOk("Password reset! You can now log in.");
-        setTimeout(() => { setMode("login"); setErr(""); setOk(""); setRec({step:1,username:"",question:"",answer:"",newPass:"",confirm:""}); }, 2000);
+        if(rec.newPass.length<4) throw new Error(t("minChars"));
+        if(rec.newPass!==rec.confirm) throw new Error(t("passwordsDontMatch"));
+        await API("POST","/recover/verify",{username:rec.username.trim(),answer:rec.answer.trim(),newPassword:rec.newPass});
+        setOk(t("passwordResetLogin"));
+        setTimeout(()=>{setMode("login");setErr("");setOk("");setRec({step:1,username:"",question:"",answer:"",newPass:"",confirm:""});},2000);
       }
-    } catch(e) { setErr(e.message); } finally { setLoading(false); }
+    } catch(e){setErr(e.message);} finally{setLoading(false);}
   };
 
-  const E = React.createElement;
-  return E("div", { style:{minHeight:"100vh",background:"#0f172a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"16px"} },
-    E("div",{style:{fontSize:"3rem",marginBottom:"8px"}}, "🌙"),
-    E("h1", {style:{fontSize:"1.6rem",fontWeight:700,color:"#fff",marginBottom:"4px"}}, "Digital Sleep Diary"),
-    E("p",  {style:{color:"#94a3b8",fontSize:"0.95rem",marginBottom:"24px"}}, "Track sleep · screen time · morning energy"),
-    E("div", {className:"card", style:{width:"100%",maxWidth:"400px"}},
-      mode!=="recover" && E("div", {style:{display:"flex",borderRadius:"8px",overflow:"hidden",border:"1px solid #475569",marginBottom:"18px"}},
-        ["login","register"].map(m => E("button", {key:m, onClick:()=>{setMode(m);setErr("");setOk("");},
+  const E=React.createElement;
+  return E("div",{style:{minHeight:"100vh",background:"#0f172a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"16px"}},
+    E("div",{style:{fontSize:"3rem",marginBottom:"8px"}},"🌙"),
+    E("h1",{style:{fontSize:"1.6rem",fontWeight:700,color:"#fff",marginBottom:"4px"}},t("appTitle")),
+    E("p",{style:{color:"#94a3b8",fontSize:"0.95rem",marginBottom:"24px"}},t("appSubtitle")),
+    E("div",{className:"card",style:{width:"100%",maxWidth:"400px"}},
+      mode!=="recover"&&E("div",{style:{display:"flex",borderRadius:"8px",overflow:"hidden",border:"1px solid #475569",marginBottom:"18px"}},
+        ["login","register"].map(m=>E("button",{key:m,onClick:()=>{setMode(m);setErr("");setOk("");},
           style:{flex:1,padding:"10px",fontSize:"1rem",fontWeight:600,background:mode===m?"#4f46e5":"none",color:mode===m?"#fff":"#94a3b8",border:"none",cursor:"pointer"}},
-          m==="login"?"Login":"Register"))
+          m==="login"?t("login"):t("register")))
       ),
-      mode!=="recover" && E(React.Fragment, null,
-        E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Username"), E("input",{className:"inp",placeholder:"your username",value:form.username,onChange:e=>sf("username",e.target.value)})),
-        E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.password,onChange:e=>sf("password",e.target.value)})),
-        mode==="register" && E(React.Fragment, null,
-          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>sf("confirm",e.target.value)})),
-          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Security Question"),
+      mode!=="recover"&&E(React.Fragment,null,
+        E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("username")),E("input",{className:"inp",placeholder:t("usernamePh"),value:form.username,onChange:e=>sf("username",e.target.value)})),
+        E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("password")),E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.password,onChange:e=>sf("password",e.target.value)})),
+        mode==="register"&&E(React.Fragment,null,
+          E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("confirmPassword")),E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>sf("confirm",e.target.value)})),
+          E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("securityQuestion")),
             E("select",{className:"sel",value:form.secQ,onChange:e=>sf("secQ",e.target.value)},
-              SECURITY_QUESTIONS.map((q,i)=>E("option",{key:i,value:i},q)))
+              SECQ.map((q,i)=>E("option",{key:i,value:i},q)))
           ),
-          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Your Answer"), E("input",{className:"inp",placeholder:"Answer (case insensitive)",value:form.secA,onChange:e=>sf("secA",e.target.value)}))
+          E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("yourAnswer")),E("input",{className:"inp",placeholder:t("answerHint"),value:form.secA,onChange:e=>sf("secA",e.target.value)}))
         ),
-        err && E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
-        ok  && E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
-        E("button",{className:"btn-primary",onClick:handleAuth,disabled:loading}, loading?"Loading...":mode==="login"?"Login →":"Create Account →"),
-        mode==="login" && E("div",{style:{textAlign:"center",marginTop:"10px"}},
-          E("button",{onClick:()=>{setMode("recover");setErr("");setOk("");},
-            style:{color:"#818cf8",fontSize:"0.9rem",textDecoration:"underline",background:"none",border:"none",cursor:"pointer"}},
-            "Forgot password?"))
+        err&&E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
+        ok&&E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
+        E("button",{className:"btn-primary",onClick:handleAuth,disabled:loading},loading?t("loading"):mode==="login"?t("loginBtn"):t("createAccountBtn")),
+        mode==="login"&&E("div",{style:{textAlign:"center",marginTop:"10px"}},
+          E("button",{onClick:()=>{setMode("recover");setErr("");setOk("");},style:{color:"#818cf8",fontSize:"0.9rem",textDecoration:"underline",background:"none",border:"none",cursor:"pointer"}},t("forgotPassword")))
       ),
-      mode==="recover" && E(React.Fragment, null,
+      mode==="recover"&&E(React.Fragment,null,
         E("div",{style:{display:"flex",alignItems:"center",gap:"8px",marginBottom:"10px"}},
           E("button",{onClick:()=>{setMode("login");setErr("");setOk("");},style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.3rem"}},"←"),
-          E("span",{style:{color:"#fff",fontWeight:600,fontSize:"1rem"}},"Password Recovery")
+          E("span",{style:{color:"#fff",fontWeight:600,fontSize:"1rem"}},t("passwordRecovery"))
         ),
         E("div",{style:{display:"flex",gap:"4px",marginBottom:"14px"}},
           [1,2,3].map(s=>E("div",{key:s,style:{flex:1,height:"4px",borderRadius:"9999px",background:rec.step>=s?"#6366f1":"#334155"}}))
         ),
-        rec.step===1 && E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Username"), E("input",{className:"inp",placeholder:"your username",value:rec.username,onChange:e=>sr("username",e.target.value)})),
-        rec.step===2 && E(React.Fragment,null,
-          E("div",{style:{background:"#334155",borderRadius:"8px",padding:"12px",marginBottom:"14px"}}, E("p",{style:{color:"#e2e8f0",fontSize:"0.9rem",fontWeight:500}},rec.question)),
-          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Your Answer"), E("input",{className:"inp",placeholder:"Answer",value:rec.answer,onChange:e=>sr("answer",e.target.value)}))
+        rec.step===1&&E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("username")),E("input",{className:"inp",placeholder:t("usernamePh"),value:rec.username,onChange:e=>sr("username",e.target.value)})),
+        rec.step===2&&E(React.Fragment,null,
+          E("div",{style:{background:"#334155",borderRadius:"8px",padding:"12px",marginBottom:"14px"}},E("p",{style:{color:"#e2e8f0",fontSize:"0.9rem",fontWeight:500}},rec.question)),
+          E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("yourAnswer")),E("input",{className:"inp",placeholder:t("answerHint"),value:rec.answer,onChange:e=>sr("answer",e.target.value)}))
         ),
-        rec.step===3 && E(React.Fragment,null,
-          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:rec.newPass,onChange:e=>sr("newPass",e.target.value)})),
-          E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:rec.confirm,onChange:e=>sr("confirm",e.target.value)}))
+        rec.step===3&&E(React.Fragment,null,
+          E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("newPassword")),E("input",{type:"password",className:"inp",placeholder:t("minChars"),value:rec.newPass,onChange:e=>sr("newPass",e.target.value)})),
+          E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("confirmPassword")),E("input",{type:"password",className:"inp",placeholder:"••••••",value:rec.confirm,onChange:e=>sr("confirm",e.target.value)}))
         ),
-        err && E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
-        ok  && E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
-        E("button",{className:"btn-primary",onClick:handleRecover,disabled:loading}, loading?"Loading...":rec.step===3?"Reset Password ✓":"Next →")
+        err&&E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
+        ok&&E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
+        E("button",{className:"btn-primary",onClick:handleRecover,disabled:loading},loading?t("loading"):rec.step===3?t("resetPassword")+" ✓":t("next"))
       )
     ),
-    E("div",{className:"footer"},"Desenvolvido por: José Paulo Tavares")
+    E("div",{className:"footer"},t("developed"))
   );
 }
 
-// ── ChangePasswordModal ────────────────────────────────────────────────────────
+/* ── ChangePasswordModal ──────────────────────────────────────────────────── */
 function ChangePasswordModal({ token, onClose }) {
-  const [form, setForm] = useState({ current:"", newPass:"", confirm:"" });
-  const [err, setErr] = useState(""); const [ok, setOk] = useState(""); const [loading, setLoading] = useState(false);
-  const E = React.createElement;
-  const handle = async () => {
-    setErr(""); setOk(""); setLoading(true);
-    try {
-      if (!form.current||!form.newPass||!form.confirm) throw new Error("Fill all fields.");
-      if (form.newPass.length<4) throw new Error("Min. 4 characters.");
-      if (form.newPass!==form.confirm) throw new Error("Passwords don't match.");
-      await API("POST", "/change-password", { currentPassword:form.current, newPassword:form.newPass }, token);
-      setOk("Password changed!"); setTimeout(onClose, 1500);
-    } catch(e) { setErr(e.message); } finally { setLoading(false); }
+  const { t }=React.useContext(LangCtx);
+  const [form,setForm]=useState({current:"",newPass:"",confirm:""});
+  const [err,setErr]=useState(""); const [ok,setOk]=useState(""); const [loading,setLoading]=useState(false);
+  const E=React.createElement;
+  const handle=async()=>{
+    setErr("");setOk("");setLoading(true);
+    try{
+      if(!form.current||!form.newPass||!form.confirm) throw new Error(t("fillAllFields"));
+      if(form.newPass.length<4) throw new Error(t("minChars"));
+      if(form.newPass!==form.confirm) throw new Error(t("passwordsDontMatch"));
+      await API("POST","/change-password",{currentPassword:form.current,newPassword:form.newPass},token);
+      setOk(t("passwordChanged")); setTimeout(onClose,1500);
+    }catch(e){setErr(e.message);}finally{setLoading(false);}
   };
   return E("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"16px"}},
     E("div",{className:"card",style:{width:"100%",maxWidth:"400px"}},
       E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px"}},
-        E("span",{style:{color:"#fff",fontWeight:700,fontSize:"1.05rem"}},"🔑 Change Password"),
+        E("span",{style:{color:"#fff",fontWeight:700,fontSize:"1.05rem"}},"🔑 "+t("saveChanges").replace("Guardar ","").replace("Guardar","").replace("A guardar","").replace("Spremi","").replace("Değişiklikleri kaydet","").replace("Save","")+" Password"),
         E("button",{onClick:onClose,style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.5rem"}},"×")
       ),
-      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Current Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.current,onChange:e=>setForm(f=>({...f,current:e.target.value}))})),
-      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
-      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Confirm New Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
-      err && E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
-      ok  && E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
-      E("button",{className:"btn-primary",onClick:handle,disabled:loading}, loading?"Saving...":"Save Changes")
+      E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("currentPassword")),E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.current,onChange:e=>setForm(f=>({...f,current:e.target.value}))})),
+      E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("newPassword")),E("input",{type:"password",className:"inp",placeholder:t("minChars"),value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
+      E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("confirmNewPassword")),E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
+      err&&E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
+      ok&&E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
+      E("button",{className:"btn-primary",onClick:handle,disabled:loading},loading?t("saving"):t("saveChanges"))
     )
   );
 }
 
-// ── AdminResetModal ────────────────────────────────────────────────────────────
+/* ── AdminResetModal ──────────────────────────────────────────────────────── */
 function AdminResetModal({ username, token, onClose }) {
-  const [form, setForm] = useState({ newPass:"", confirm:"" });
-  const [err, setErr] = useState(""); const [ok, setOk] = useState(""); const [loading, setLoading] = useState(false);
-  const E = React.createElement;
-  const handle = async () => {
-    setErr(""); setOk(""); setLoading(true);
-    try {
-      if (form.newPass.length<4) throw new Error("Min. 4 characters.");
-      if (form.newPass!==form.confirm) throw new Error("Passwords don't match.");
-      await API("POST", "/admin/reset-password", { username, newPassword:form.newPass }, token);
-      setOk("Password reset!"); setTimeout(onClose, 1500);
-    } catch(e) { setErr(e.message); } finally { setLoading(false); }
+  const { t }=React.useContext(LangCtx);
+  const [form,setForm]=useState({newPass:"",confirm:""});
+  const [err,setErr]=useState(""); const [ok,setOk]=useState(""); const [loading,setLoading]=useState(false);
+  const E=React.createElement;
+  const handle=async()=>{
+    setErr("");setOk("");setLoading(true);
+    try{
+      if(form.newPass.length<4) throw new Error(t("minChars"));
+      if(form.newPass!==form.confirm) throw new Error(t("passwordsDontMatch"));
+      await API("POST","/admin/reset-password",{username,newPassword:form.newPass},token);
+      setOk(t("passwordReset")); setTimeout(onClose,1500);
+    }catch(e){setErr(e.message);}finally{setLoading(false);}
   };
   return E("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"16px"}},
     E("div",{className:"card",style:{width:"100%",maxWidth:"400px"}},
       E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px"}},
-        E("span",{style:{color:"#fff",fontWeight:700,fontSize:"1.05rem"}},"🔑 Reset — @"+username),
+        E("span",{style:{color:"#fff",fontWeight:700,fontSize:"1.05rem"}},"🔑 "+t("resetPassword")+" — @"+username),
         E("button",{onClick:onClose,style:{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1.5rem"}},"×")
       ),
-      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"New Password"), E("input",{type:"password",className:"inp",placeholder:"min. 4 characters",value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
-      E("div",{style:{marginBottom:"14px"}}, E("label",{className:"lbl"},"Confirm Password"), E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
-      err && E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
-      ok  && E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
-      E("button",{onClick:handle,disabled:loading,style:{width:"100%",padding:"12px",borderRadius:"12px",fontWeight:700,color:"#fff",border:"none",cursor:"pointer",fontSize:"1rem",background:"linear-gradient(to right,#dc2626,#ea580c)"}}, loading?"Resetting...":"Reset Password")
+      E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("newPassword")),E("input",{type:"password",className:"inp",placeholder:t("minChars"),value:form.newPass,onChange:e=>setForm(f=>({...f,newPass:e.target.value}))})),
+      E("div",{style:{marginBottom:"14px"}},E("label",{className:"lbl"},t("confirmPassword")),E("input",{type:"password",className:"inp",placeholder:"••••••",value:form.confirm,onChange:e=>setForm(f=>({...f,confirm:e.target.value}))})),
+      err&&E("p",{style:{color:"#f87171",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},err),
+      ok&&E("p",{style:{color:"#4ade80",fontSize:"0.9rem",textAlign:"center",marginBottom:"10px"}},ok),
+      E("button",{onClick:handle,disabled:loading,style:{width:"100%",padding:"12px",borderRadius:"12px",fontWeight:700,color:"#fff",border:"none",cursor:"pointer",fontSize:"1rem",background:"linear-gradient(to right,#dc2626,#ea580c)"}},
+        loading?t("resetting"):t("resetPassword"))
     )
   );
 }
 
-// ── StudentApp ─────────────────────────────────────────────────────────────────
+/* ── StudentApp ───────────────────────────────────────────────────────────── */
 function StudentApp({ user }) {
-  const [entries, setEntries] = useState([]);
-  const [tab,     setTab]     = useState("log");
-  const [form,    setForm]    = useState({ date:new Date().toISOString().split("T")[0], bedTime:"23:00", wakeTime:"07:00", screenTime:1, energy:7, notes:"" });
-  const [saved,   setSaved]   = useState(false);
-  const [showPw,  setShowPw]  = useState(false);
-  const [loading, setLoading] = useState(true);
-  const E = React.createElement;
+  const { t }=React.useContext(LangCtx);
+  const [entries,setEntries]=useState([]);
+  const [tab,setTab]=useState("log");
+  const [form,setForm]=useState({date:new Date().toISOString().split("T")[0],bedTime:"23:00",wakeTime:"07:00",screenTime:1,energy:7,notes:""});
+  const [saved,setSaved]=useState(false);
+  const [showPw,setShowPw]=useState(false);
+  const [loading,setLoading]=useState(true);
+  const E=React.createElement;
 
-  const loadEntries = useCallback(async () => {
-    try { const data = await API("GET", "/entries", null, user.token); setEntries(data); } catch(e) { console.error(e); }
+  const TIPS=[
+    {icon:"📵",title:t("t0t"),text:t("t0d")},{icon:"⏰",title:t("t1t"),text:t("t1d")},
+    {icon:"🌡️",title:t("t2t"),text:t("t2d")},{icon:"☕",title:t("t3t"),text:t("t3d")},
+    {icon:"🧘",title:t("t4t"),text:t("t4d")},{icon:"🌙",title:t("t5t"),text:t("t5d")},
+  ];
+
+  const loadEntries=useCallback(async()=>{
+    try{const data=await API("GET","/entries",null,user.token);setEntries(data);}catch(e){console.error(e);}
     setLoading(false);
-  }, [user.token]);
+  },[user.token]);
+  useEffect(()=>{loadEntries();},[loadEntries]);
 
-  useEffect(() => { loadEntries(); }, [loadEntries]);
-
-  const handleSave = async () => {
-    const duration = calcDur(form.bedTime, form.wakeTime);
-    try {
-      await API("POST", "/entries", {...form, duration}, user.token);
-      setSaved(true); setTimeout(()=>setSaved(false), 2000);
-      loadEntries();
-    } catch(e) { alert(e.message); }
+  const handleSave=async()=>{
+    const duration=calcDur(form.bedTime,form.wakeTime);
+    try{await API("POST","/entries",{...form,duration},user.token);setSaved(true);setTimeout(()=>setSaved(false),2000);loadEntries();}
+    catch(e){alert(e.message);}
   };
+  const del=async id=>{try{await API("DELETE","/entries/"+id,null,user.token);loadEntries();}catch(e){alert(e.message);}};
 
-  const del = async id => {
-    try { await API("DELETE", "/entries/"+id, null, user.token); loadEntries(); } catch(e) { alert(e.message); }
-  };
+  const weekly=entries.slice(0,7).reverse();
+  const chartData=weekly.map(e=>({name:fmt(e.date),Sleep:e.duration,Screen:e.screen_time,Energy:e.energy}));
+  const TABS=[["log",t("tabLog")],["history",t("tabHistory")],["charts",t("tabCharts")],["insights",t("tabInsights")],["tips",t("tabTips")]];
 
-  const weekly    = entries.slice(0,7).reverse();
-  const chartData = weekly.map(e => ({ name:fmt(e.date), Sleep:e.duration, Screen:e.screen_time, Energy:e.energy }));
-  const TABS = [["log","📝 Log"],["history","📅 History"],["charts","📊 Charts"],["insights","💡 Insights"],["tips","🌿 Tips"]];
-
-  return E("div", { style:{minHeight:"100vh",background:"#0f172a"} },
-    showPw && E(ChangePasswordModal, { token:user.token, onClose:()=>setShowPw(false) }),
-    E("div", { className:"grad-header", style:{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"} },
-      E("div", null,
-        E("div", {style:{fontSize:"1.15rem",fontWeight:700,color:"#fff"}}, "🌙 Sleep Diary"),
-        E("div", {style:{color:"#94a3b8",fontSize:"0.85rem"}}, "@"+user.username)
+  return E("div",{style:{minHeight:"100vh",background:"#0f172a"}},
+    showPw&&E(ChangePasswordModal,{token:user.token,onClose:()=>setShowPw(false)}),
+    E("div",{className:"grad-header",style:{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      E("div",null,
+        E("div",{style:{fontSize:"1.15rem",fontWeight:700,color:"#fff"}},"🌙 "+t("appTitle")),
+        E("div",{style:{color:"#94a3b8",fontSize:"0.85rem"}},"@"+user.username)
       ),
-      E("div", {style:{display:"flex",gap:"8px"}},
-        E("button", {className:"btn-outline",onClick:()=>setShowPw(true)}, "🔑 Password"),
-        E("button", {className:"btn-outline",onClick:user.logout}, "Logout")
+      E("div",{style:{display:"flex",gap:"8px"}},
+        E("button",{className:"btn-outline",onClick:()=>setShowPw(true)},t("changePw")),
+        E("button",{className:"btn-outline",onClick:user.logout},t("logout"))
       )
     ),
-    E("div", {style:{display:"flex",borderBottom:"2px solid #1e293b",background:"#0a0f1e",overflowX:"auto"}},
-      TABS.map(([k,l]) => E("button", {key:k, className:"tab-btn"+(tab===k?" active":""), onClick:()=>setTab(k)}, l))
+    E("div",{style:{display:"flex",borderBottom:"2px solid #1e293b",background:"#0a0f1e",overflowX:"auto"}},
+      TABS.map(([k,l])=>E("button",{key:k,className:"tab-btn"+(tab===k?" active":""),onClick:()=>setTab(k)},l))
     ),
-    E("div", {style:{padding:"16px 16px 8px",maxWidth:"672px",margin:"0 auto"}},
-      loading && E("div", {className:"spinner"}),
-      !loading && E(React.Fragment, null,
+    E("div",{style:{padding:"16px 16px 8px",maxWidth:"672px",margin:"0 auto"}},
+      loading&&E("div",{className:"spinner"}),
+      !loading&&E(React.Fragment,null,
 
-        tab==="log" && E("div", {className:"space-y-4"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Today's Sleep Log"),
-          E("div",null, E("label",{className:"lbl"},"📅 Date"), E("input",{type:"date",className:"inp",value:form.date,onChange:e=>setForm({...form,date:e.target.value})})),
+        tab==="log"&&E("div",{className:"space-y-4"},
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}},t("todayLog")),
+          E("div",null,E("label",{className:"lbl"},t("date")),E("input",{type:"date",className:"inp",value:form.date,onChange:e=>setForm({...form,date:e.target.value})})),
           E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}},
-            E("div",null, E("label",{className:"lbl"},"🛏️ Bedtime"), E("input",{type:"time",className:"inp",value:form.bedTime,onChange:e=>setForm({...form,bedTime:e.target.value})})),
-            E("div",null, E("label",{className:"lbl"},"⏰ Wake-up"), E("input",{type:"time",className:"inp",value:form.wakeTime,onChange:e=>setForm({...form,wakeTime:e.target.value})}))
+            E("div",null,E("label",{className:"lbl"},t("bedtime")),E("input",{type:"time",className:"inp",value:form.bedTime,onChange:e=>setForm({...form,bedTime:e.target.value})})),
+            E("div",null,E("label",{className:"lbl"},t("wakeUp")),E("input",{type:"time",className:"inp",value:form.wakeTime,onChange:e=>setForm({...form,wakeTime:e.target.value})}))
           ),
           E("div",{style:{background:"#1e293b",borderRadius:"8px",padding:"12px",textAlign:"center"}},
-            E("span",{style:{color:"#94a3b8",fontSize:"0.95rem"}}, "Duration: "),
-            E("span",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.3rem"}}, calcDur(form.bedTime,form.wakeTime)+"h")
+            E("span",{style:{color:"#94a3b8",fontSize:"0.95rem"}},t("duration")),
+            E("span",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.3rem"}},calcDur(form.bedTime,form.wakeTime)+"h")
           ),
           E("div",null,
-            E("label",{className:"lbl"}, "📱 Pre-sleep screen time: ", E("span",{style:{color:"#a5b4fc",fontWeight:700}}, form.screenTime+"h")),
+            E("label",{className:"lbl"},t("screenTime"),E("span",{style:{color:"#a5b4fc",fontWeight:700}},form.screenTime+"h")),
             E("input",{type:"range",min:0,max:6,step:0.5,value:form.screenTime,className:"accent-indigo",onChange:e=>setForm({...form,screenTime:+e.target.value})}),
-            E("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.85rem",color:"#94a3b8",marginTop:"4px"}}, E("span",null,"0h"), E("span",null,"3h"), E("span",null,"6h"))
+            E("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.85rem",color:"#94a3b8",marginTop:"4px"}},E("span",null,"0h"),E("span",null,"3h"),E("span",null,"6h"))
           ),
           E("div",null,
-            E("label",{className:"lbl"}, "⚡ Morning energy: ", E("span",{style:{color:"#facc15",fontWeight:700}}, form.energy+"/10")),
+            E("label",{className:"lbl"},t("morningEnergy"),E("span",{style:{color:"#facc15",fontWeight:700}},form.energy+"/10")),
             E("input",{type:"range",min:1,max:10,step:1,value:form.energy,className:"accent-yellow",onChange:e=>setForm({...form,energy:+e.target.value})}),
-            E("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.85rem",color:"#94a3b8",marginTop:"4px"}}, E("span",null,"😴 1"), E("span",null,"😐 5"), E("span",null,"⚡ 10"))
+            E("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.85rem",color:"#94a3b8",marginTop:"4px"}},E("span",null,"😴 1"),E("span",null,"😐 5"),E("span",null,"⚡ 10"))
           ),
-          E("div",null, E("label",{className:"lbl"},"📝 Notes"), E("textarea",{className:"inp",placeholder:"How did you sleep?",value:form.notes,onChange:e=>setForm({...form,notes:e.target.value}),style:{resize:"none",height:"72px"}})),
-          E("button",{className:"btn-primary",onClick:handleSave}, saved?"✅ Saved!":"💾 Save Entry")
+          E("div",null,E("label",{className:"lbl"},t("notes")),E("textarea",{className:"inp",placeholder:t("notesPlaceholder"),value:form.notes,onChange:e=>setForm({...form,notes:e.target.value}),style:{resize:"none",height:"72px"}})),
+          E("button",{className:"btn-primary",onClick:handleSave},saved?t("saved"):t("saveEntry"))
         ),
 
-        tab==="history" && E("div", {className:"space-y-3"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Weekly History"),
-          entries.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "No entries yet. Start logging! 🌙"),
-          entries.slice(0,7).map(e => E("div",{key:e.id,className:"card"},
+        tab==="history"&&E("div",{className:"space-y-3"},
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}},t("weeklyHistory")),
+          entries.length===0&&E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}},t("noEntries")),
+          entries.slice(0,7).map(e=>E("div",{key:e.id,className:"card"},
             E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
               E("div",null,
-                E("p",{style:{fontWeight:700,color:"#f1f5f9",fontSize:"1rem"}}, fmt(e.date)),
-                E("p",{style:{color:"#94a3b8",fontSize:"0.85rem",marginTop:"2px"}}, e.bed_time+" → "+e.wake_time)
+                E("p",{style:{fontWeight:700,color:"#f1f5f9",fontSize:"1rem"}},fmt(e.date)),
+                E("p",{style:{color:"#94a3b8",fontSize:"0.85rem",marginTop:"2px"}},e.bed_time+" → "+e.wake_time)
               ),
-              E("button",{onClick:()=>del(e.id),style:{background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:"1.1rem"}}, "🗑")
+              E("button",{onClick:()=>del(e.id),style:{background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:"1.1rem"}},"🗑")
             ),
             E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px",marginTop:"12px"}},
-              E("div",{className:"mini-card"}, E("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1rem"}},e.duration+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Sleep")),
-              E("div",{className:"mini-card"}, E("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"1rem"}},e.screen_time+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Screen")),
-              E("div",{className:"mini-card"}, E("div",{style:{color:"#fde047",fontWeight:700,fontSize:"1rem"}},e.energy+"/10"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Energy"))
+              E("div",{className:"mini-card"},E("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1rem"}},e.duration+"h"),E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},t("sleep"))),
+              E("div",{className:"mini-card"},E("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"1rem"}},e.screen_time+"h"),E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},t("screen"))),
+              E("div",{className:"mini-card"},E("div",{style:{color:"#fde047",fontWeight:700,fontSize:"1rem"}},e.energy+"/10"),E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},t("energy")))
             ),
-            e.notes && E("p",{style:{color:"#94a3b8",fontSize:"0.85rem",marginTop:"8px",fontStyle:"italic"}}, '"'+e.notes+'"')
+            e.notes&&E("p",{style:{color:"#94a3b8",fontSize:"0.85rem",marginTop:"8px",fontStyle:"italic"}},'"'+e.notes+'"')
           ))
         ),
 
-        tab==="charts" && E("div", {className:"space-y-5"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Weekly Charts"),
-          chartData.length<2 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "Log at least 2 days! 📊"),
-          chartData.length>=2 && E(React.Fragment, null,
+        tab==="charts"&&E("div",{className:"space-y-5"},
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}},t("weeklyCharts")),
+          chartData.length<2&&E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}},t("log2days")),
+          chartData.length>=2&&E(React.Fragment,null,
             E("div",{className:"card"},
-              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Sleep Duration (hours)"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}},t("sleepDuration")),
               E(ResponsiveContainer,{width:"100%",height:160},
                 E(BarChart,{data:chartData},
                   E(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),
@@ -382,7 +679,7 @@ function StudentApp({ user }) {
               )
             ),
             E("div",{className:"card"},
-              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Screen Time vs Energy"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}},t("screenVsEnergy")),
               E(ResponsiveContainer,{width:"100%",height:160},
                 E(LineChart,{data:chartData},
                   E(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),
@@ -390,97 +687,97 @@ function StudentApp({ user }) {
                   E(YAxis,{tick:{fill:"#94a3b8",fontSize:11}}),
                   E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:12}}),
                   E(Legend,{wrapperStyle:{fontSize:12}}),
-                  E(Line,{type:"monotone",dataKey:"Screen",stroke:"#a78bfa",strokeWidth:2,dot:{r:3},name:"Screen (h)"}),
-                  E(Line,{type:"monotone",dataKey:"Energy",stroke:"#fbbf24",strokeWidth:2,dot:{r:3},name:"Energy (/10)"})
+                  E(Line,{type:"monotone",dataKey:"Screen",stroke:"#a78bfa",strokeWidth:2,dot:{r:3},name:t("screen")+" (h)"}),
+                  E(Line,{type:"monotone",dataKey:"Energy",stroke:"#fbbf24",strokeWidth:2,dot:{r:3},name:t("energy")+" (/10)"})
                 )
               )
             )
           )
         ),
 
-        tab==="insights" && E("div", {className:"space-y-3"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Automatic Insights"),
-          genInsights(entries).map((msg,i) => E("div",{key:i,className:"card"}, E("p",{style:{color:"#e2e8f0",fontSize:"0.95rem",lineHeight:1.65}},msg)))
+        tab==="insights"&&E("div",{className:"space-y-3"},
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}},t("autoInsights")),
+          genInsights(entries,t).map((msg,i)=>E("div",{key:i,className:"card"},E("p",{style:{color:"#e2e8f0",fontSize:"0.95rem",lineHeight:1.65}},msg)))
         ),
 
-        tab==="tips" && E("div", {className:"space-y-3"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Sleep Hygiene Tips"),
-          TIPS.map((t,i) => E("div",{key:i,className:"card",style:{display:"flex",gap:"12px"}},
-            E("span",{style:{fontSize:"1.6rem"}}, t.icon),
+        tab==="tips"&&E("div",{className:"space-y-3"},
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}},t("sleepHygiene")),
+          TIPS.map((tip,i)=>E("div",{key:i,className:"card",style:{display:"flex",gap:"12px"}},
+            E("span",{style:{fontSize:"1.6rem"}},tip.icon),
             E("div",null,
-              E("h3",{style:{color:"#f1f5f9",fontWeight:700,fontSize:"0.95rem"}}, t.title),
-              E("p",{style:{color:"#94a3b8",fontSize:"0.88rem",marginTop:"4px",lineHeight:1.6}}, t.text)
+              E("h3",{style:{color:"#f1f5f9",fontWeight:700,fontSize:"0.95rem"}},tip.title),
+              E("p",{style:{color:"#94a3b8",fontSize:"0.88rem",marginTop:"4px",lineHeight:1.6}},tip.text)
             )
           ))
         )
       )
     ),
-    E("div",{className:"footer"},"Desenvolvido por: José Paulo Tavares")
+    E("div",{className:"footer"},t("developed"))
   );
 }
 
-// ── AdminApp ───────────────────────────────────────────────────────────────────
+/* ── AdminApp ─────────────────────────────────────────────────────────────── */
 function AdminApp({ user }) {
-  const [data,      setData]      = useState([]);
-  const [tab,       setTab]       = useState("overview");
-  const [loading,   setLoading]   = useState(true);
-  const [resetUser, setResetUser] = useState(null);
-  const E = React.createElement;
+  const { t }=React.useContext(LangCtx);
+  const [data,setData]=useState([]);
+  const [tab,setTab]=useState("overview");
+  const [loading,setLoading]=useState(true);
+  const [resetUser,setResetUser]=useState(null);
+  const E=React.createElement;
 
-  const loadData = useCallback(async () => {
+  const loadData=useCallback(async()=>{
     setLoading(true);
-    try { const d = await API("GET", "/admin/users", null, user.token); setData(d); } catch(e) { console.error(e); }
+    try{const d=await API("GET","/admin/users",null,user.token);setData(d);}catch(e){console.error(e);}
     setLoading(false);
-  }, [user.token]);
+  },[user.token]);
+  useEffect(()=>{loadData();},[loadData]);
 
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const allEntries = data.flatMap(u => u.entries);
-  const rankings   = data.filter(u=>u.entries.length>0).map(u => ({
-    name: u.username,
-    avgSleep:  avg(u.entries.map(e=>e.duration)),
-    avgEnergy: avg(u.entries.map(e=>e.energy)),
-    avgScreen: avg(u.entries.map(e=>e.screen_time)),
-    count: u.entries.length,
+  const allEntries=data.flatMap(u=>u.entries);
+  const rankings=data.filter(u=>u.entries.length>0).map(u=>({
+    name:u.username,
+    avgSleep:avg(u.entries.map(e=>e.duration)),
+    avgEnergy:avg(u.entries.map(e=>e.energy)),
+    avgScreen:avg(u.entries.map(e=>e.screen_time)),
+    count:u.entries.length,
   }));
-  const groupChart = rankings.map(r => ({ name:r.name, Sleep:r.avgSleep, Energy:r.avgEnergy, Screen:r.avgScreen }));
-  const medal = i => ["🥇","🥈","🥉"][i] || (i+1)+".";
-  const TABS = [["overview","📊 Overview"],["rankings","🏆 Rankings"],["compare","👥 Compare"],["students","📋 Students"]];
+  const groupChart=rankings.map(r=>({name:r.name,Sleep:r.avgSleep,Energy:r.avgEnergy,Screen:r.avgScreen}));
+  const medal=i=>["🥇","🥈","🥉"][i]||(i+1)+".";
+  const TABS=[["overview",t("tabOverview")],["rankings",t("tabRankings")],["compare",t("tabCompare")],["students",t("tabStudents")]];
 
-  return E("div", {style:{minHeight:"100vh",background:"#0f172a"}},
-    resetUser && E(AdminResetModal, {username:resetUser, token:user.token, onClose:()=>{setResetUser(null);loadData();}}),
+  return E("div",{style:{minHeight:"100vh",background:"#0f172a"}},
+    resetUser&&E(AdminResetModal,{username:resetUser,token:user.token,onClose:()=>{setResetUser(null);loadData();}}),
     E("div",{className:"grad-admin",style:{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}},
       E("div",null,
-        E("div",{style:{fontSize:"1.15rem",fontWeight:700,color:"#fff"}}, "🛡️ Admin Panel"),
-        E("div",{style:{color:"#94a3b8",fontSize:"0.85rem"}}, data.length+" students registered")
+        E("div",{style:{fontSize:"1.15rem",fontWeight:700,color:"#fff"}},t("adminPanel")),
+        E("div",{style:{color:"#94a3b8",fontSize:"0.85rem"}},data.length+t("studentsReg"))
       ),
-      E("button",{className:"btn-outline",onClick:user.logout}, "Logout")
+      E("button",{className:"btn-outline",onClick:user.logout},t("logout"))
     ),
     E("div",{style:{display:"flex",borderBottom:"2px solid #1e293b",background:"#0a0f1e",overflowX:"auto"}},
       TABS.map(([k,l])=>E("button",{key:k,className:"tab-btn"+(tab===k?" active":""),onClick:()=>setTab(k)},l))
     ),
     E("div",{style:{padding:"16px 16px 8px",maxWidth:"672px",margin:"0 auto"}},
-      loading && E("div",{className:"spinner"}),
-      !loading && E(React.Fragment, null,
+      loading&&E("div",{className:"spinner"}),
+      !loading&&E(React.Fragment,null,
 
-        tab==="overview" && E("div",{className:"space-y-4"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "Group Overview"),
-          allEntries.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "No student data yet."),
-          allEntries.length>0 && E(React.Fragment, null,
+        tab==="overview"&&E("div",{className:"space-y-4"},
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}},t("groupOverview")),
+          allEntries.length===0&&E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}},t("noStudentData")),
+          allEntries.length>0&&E(React.Fragment,null,
             E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}},
               [
-                {label:"Avg Sleep",  val:avg(allEntries.map(e=>e.duration))+"h",    icon:"🛏️", color:"#a5b4fc"},
-                {label:"Avg Energy", val:avg(allEntries.map(e=>e.energy))+"/10",    icon:"⚡",  color:"#facc15"},
-                {label:"Avg Screen", val:avg(allEntries.map(e=>e.screen_time))+"h", icon:"📱",  color:"#d8b4fe"},
-                {label:"Total Logs", val:allEntries.length,                          icon:"📝",  color:"#86efac"},
-              ].map((s,i) => E("div",{key:i,className:"stat-card"},
-                E("div",{style:{fontSize:"1.6rem",marginBottom:"4px"}}, s.icon),
-                E("div",{style:{fontSize:"1.3rem",fontWeight:700,color:s.color}}, s.val),
-                E("div",{style:{color:"#94a3b8",fontSize:"0.85rem",marginTop:"4px"}}, s.label)
+                {label:t("avgSleep"),val:avg(allEntries.map(e=>e.duration))+"h",icon:"🛏️",color:"#a5b4fc"},
+                {label:t("avgEnergy"),val:avg(allEntries.map(e=>e.energy))+"/10",icon:"⚡",color:"#facc15"},
+                {label:t("avgScreen"),val:avg(allEntries.map(e=>e.screen_time))+"h",icon:"📱",color:"#d8b4fe"},
+                {label:t("totalLogs"),val:allEntries.length,icon:"📝",color:"#86efac"},
+              ].map((s,i)=>E("div",{key:i,className:"stat-card"},
+                E("div",{style:{fontSize:"1.6rem",marginBottom:"4px"}},s.icon),
+                E("div",{style:{fontSize:"1.3rem",fontWeight:700,color:s.color}},s.val),
+                E("div",{style:{color:"#94a3b8",fontSize:"0.85rem",marginTop:"4px"}},s.label)
               ))
             ),
-            groupChart.length>=2 && E("div",{className:"card"},
-              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Student Averages"),
+            groupChart.length>=2&&E("div",{className:"card"},
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}},t("studentAverages")),
               E(ResponsiveContainer,{width:"100%",height:200},
                 E(BarChart,{data:groupChart,layout:"vertical"},
                   E(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),
@@ -488,57 +785,57 @@ function AdminApp({ user }) {
                   E(YAxis,{type:"category",dataKey:"name",tick:{fill:"#94a3b8",fontSize:11},width:70}),
                   E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:12}}),
                   E(Legend,{wrapperStyle:{fontSize:12}}),
-                  E(Bar,{dataKey:"Sleep",  fill:"#6366f1",name:"Sleep (h)",    radius:[0,4,4,0]}),
-                  E(Bar,{dataKey:"Energy", fill:"#fbbf24",name:"Energy (/10)", radius:[0,4,4,0]}),
-                  E(Bar,{dataKey:"Screen", fill:"#a78bfa",name:"Screen (h)",   radius:[0,4,4,0]})
+                  E(Bar,{dataKey:"Sleep",fill:"#6366f1",name:t("sleep")+" (h)",radius:[0,4,4,0]}),
+                  E(Bar,{dataKey:"Energy",fill:"#fbbf24",name:t("energy")+" (/10)",radius:[0,4,4,0]}),
+                  E(Bar,{dataKey:"Screen",fill:"#a78bfa",name:t("screen")+" (h)",radius:[0,4,4,0]})
                 )
               )
             )
           )
         ),
 
-        tab==="rankings" && E("div",{className:"space-y-4"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "🏆 Rankings"),
-          rankings.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "No data yet."),
+        tab==="rankings"&&E("div",{className:"space-y-4"},
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}},t("rankings")),
+          rankings.length===0&&E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}},t("noData")),
           [
-            {title:"Most Sleep 😴",     key:"avgSleep",  unit:"h avg",   sort:(a,b)=>b.avgSleep-a.avgSleep,   color:"#a5b4fc"},
-            {title:"Best Energy ⚡",    key:"avgEnergy", unit:"/10 avg", sort:(a,b)=>b.avgEnergy-a.avgEnergy, color:"#facc15"},
-            {title:"Least Screen 📵",   key:"avgScreen", unit:"h avg",   sort:(a,b)=>a.avgScreen-b.avgScreen, color:"#d8b4fe"},
-            {title:"Most Consistent 📅",key:"count",     unit:"logs",    sort:(a,b)=>b.count-a.count,         color:"#86efac"},
-          ].map((r,ri) => E("div",{key:ri,className:"card"},
-            E("h3",{style:{color:"#f1f5f9",fontWeight:700,fontSize:"0.95rem",marginBottom:"12px"}}, r.title),
+            {title:t("mostSleep"),key:"avgSleep",unit:t("hAvg"),sort:(a,b)=>b.avgSleep-a.avgSleep,color:"#a5b4fc"},
+            {title:t("bestEnergy"),key:"avgEnergy",unit:t("avg10"),sort:(a,b)=>b.avgEnergy-a.avgEnergy,color:"#facc15"},
+            {title:t("leastScreen"),key:"avgScreen",unit:t("hAvg"),sort:(a,b)=>a.avgScreen-b.avgScreen,color:"#d8b4fe"},
+            {title:t("mostConsistent"),key:"count",unit:t("logs"),sort:(a,b)=>b.count-a.count,color:"#86efac"},
+          ].map((r,ri)=>E("div",{key:ri,className:"card"},
+            E("h3",{style:{color:"#f1f5f9",fontWeight:700,fontSize:"0.95rem",marginBottom:"12px"}},r.title),
             E("div",{className:"space-y-2"},
-              [...rankings].sort(r.sort).slice(0,5).map((u,i) =>
+              [...rankings].sort(r.sort).slice(0,5).map((u,i)=>
                 E("div",{key:u.name,style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
                   E("div",{style:{display:"flex",alignItems:"center",gap:"8px"}},
-                    E("span",{style:{fontSize:"1.1rem"}}, medal(i)),
-                    E("span",{style:{color:"#e2e8f0",fontSize:"0.95rem"}}, "@"+u.name)
+                    E("span",{style:{fontSize:"1.1rem"}},medal(i)),
+                    E("span",{style:{color:"#e2e8f0",fontSize:"0.95rem"}},"@"+u.name)
                   ),
-                  E("span",{style:{color:r.color,fontWeight:700,fontSize:"0.95rem"}}, u[r.key]+" "+r.unit)
+                  E("span",{style:{color:r.color,fontWeight:700,fontSize:"0.95rem"}},u[r.key]+" "+r.unit)
                 )
               )
             )
           ))
         ),
 
-        tab==="compare" && E("div",{className:"space-y-4"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "👥 Collective Charts"),
-          groupChart.length<2 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "Need at least 2 students with data."),
-          groupChart.length>=2 && E(React.Fragment, null,
+        tab==="compare"&&E("div",{className:"space-y-4"},
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}},t("collectiveCharts")),
+          groupChart.length<2&&E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}},t("need2students")),
+          groupChart.length>=2&&E(React.Fragment,null,
             E("div",{className:"card"},
-              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Sleep per Student"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}},t("sleepPerStudent")),
               E(ResponsiveContainer,{width:"100%",height:180},
                 E(BarChart,{data:groupChart},
                   E(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),
                   E(XAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:11}}),
                   E(YAxis,{tick:{fill:"#94a3b8",fontSize:11},domain:[0,12]}),
                   E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:12}}),
-                  E(Bar,{dataKey:"Sleep",fill:"#6366f1",radius:[4,4,0,0],name:"Avg Sleep (h)"})
+                  E(Bar,{dataKey:"Sleep",fill:"#6366f1",radius:[4,4,0,0],name:t("avgSleep")+" (h)"})
                 )
               )
             ),
             E("div",{className:"card"},
-              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Energy vs Screen"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}},t("energyVsScreen")),
               E(ResponsiveContainer,{width:"100%",height:180},
                 E(BarChart,{data:groupChart},
                   E(CartesianGrid,{strokeDasharray:"3 3",stroke:"#334155"}),
@@ -546,19 +843,19 @@ function AdminApp({ user }) {
                   E(YAxis,{tick:{fill:"#94a3b8",fontSize:11}}),
                   E(Tooltip,{contentStyle:{background:"#1e293b",border:"none",borderRadius:8,fontSize:12}}),
                   E(Legend,{wrapperStyle:{fontSize:12}}),
-                  E(Bar,{dataKey:"Energy",fill:"#fbbf24",radius:[4,4,0,0],name:"Energy (/10)"}),
-                  E(Bar,{dataKey:"Screen",fill:"#a78bfa",radius:[4,4,0,0],name:"Screen (h)"})
+                  E(Bar,{dataKey:"Energy",fill:"#fbbf24",radius:[4,4,0,0],name:t("energy")+" (/10)"}),
+                  E(Bar,{dataKey:"Screen",fill:"#a78bfa",radius:[4,4,0,0],name:t("screen")+" (h)"})
                 )
               )
             ),
             E("div",{className:"card"},
-              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}}, "Radar — Student Profiles"),
+              E("h3",{style:{color:"#e2e8f0",fontSize:"0.95rem",fontWeight:600,marginBottom:"12px"}},t("radarProfiles")),
               E(ResponsiveContainer,{width:"100%",height:220},
                 E(RadarChart,{data:groupChart},
                   E(PolarGrid,{stroke:"#334155"}),
                   E(PolarAngleAxis,{dataKey:"name",tick:{fill:"#94a3b8",fontSize:11}}),
-                  E(Radar,{name:"Sleep",  dataKey:"Sleep",  stroke:"#6366f1",fill:"#6366f1",fillOpacity:0.3}),
-                  E(Radar,{name:"Energy", dataKey:"Energy", stroke:"#fbbf24",fill:"#fbbf24",fillOpacity:0.3}),
+                  E(Radar,{name:t("sleep"),dataKey:"Sleep",stroke:"#6366f1",fill:"#6366f1",fillOpacity:0.3}),
+                  E(Radar,{name:t("energy"),dataKey:"Energy",stroke:"#fbbf24",fill:"#fbbf24",fillOpacity:0.3}),
                   E(Legend,{wrapperStyle:{fontSize:12}})
                 )
               )
@@ -566,53 +863,57 @@ function AdminApp({ user }) {
           )
         ),
 
-        tab==="students" && E("div",{className:"space-y-3"},
-          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}}, "📋 All Students"),
-          data.length===0 && E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}}, "No students registered yet."),
-          data.map(u => E("div",{key:u.id,className:"card"},
+        tab==="students"&&E("div",{className:"space-y-3"},
+          E("h2",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1.1rem"}},t("allStudents")),
+          data.length===0&&E("p",{style:{color:"#94a3b8",textAlign:"center",padding:"32px 0",fontSize:"0.95rem"}},t("noStudents")),
+          data.map(u=>E("div",{key:u.id,className:"card"},
             E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}},
-              E("span",{style:{color:"#f1f5f9",fontWeight:700,fontSize:"0.95rem"}}, "@"+u.username),
+              E("span",{style:{color:"#f1f5f9",fontWeight:700,fontSize:"0.95rem"}},"@"+u.username),
               E("div",{style:{display:"flex",alignItems:"center",gap:"8px"}},
-                E("span",{style:{color:"#94a3b8",fontSize:"0.85rem"}}, u.entries.length+" log"+(u.entries.length!==1?"s":"")),
-                E("button",{onClick:()=>setResetUser(u.username),style:{fontSize:"0.82rem",color:"#fb923c",border:"1px solid #9a3412",background:"none",borderRadius:"6px",padding:"4px 10px",cursor:"pointer"}}, "🔑 Reset")
+                E("span",{style:{color:"#94a3b8",fontSize:"0.85rem"}},u.entries.length+" "+t("logs")),
+                E("button",{onClick:()=>setResetUser(u.username),style:{fontSize:"0.82rem",color:"#fb923c",border:"1px solid #9a3412",background:"none",borderRadius:"6px",padding:"4px 10px",cursor:"pointer"}},t("resetBtn"))
               )
             ),
             u.entries.length>0
-              ? E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}},
-                  E("div",{className:"mini-card"}, E("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1rem"}},avg(u.entries.map(e=>e.duration))+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Avg Sleep")),
-                  E("div",{className:"mini-card"}, E("div",{style:{color:"#facc15",fontWeight:700,fontSize:"1rem"}},avg(u.entries.map(e=>e.energy))+"/10"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Avg Energy")),
-                  E("div",{className:"mini-card"}, E("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"1rem"}},avg(u.entries.map(e=>e.screen_time))+"h"), E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},"Avg Screen"))
+              ?E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}},
+                  E("div",{className:"mini-card"},E("div",{style:{color:"#a5b4fc",fontWeight:700,fontSize:"1rem"}},avg(u.entries.map(e=>e.duration))+"h"),E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},t("avgSleep"))),
+                  E("div",{className:"mini-card"},E("div",{style:{color:"#facc15",fontWeight:700,fontSize:"1rem"}},avg(u.entries.map(e=>e.energy))+"/10"),E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},t("avgEnergy"))),
+                  E("div",{className:"mini-card"},E("div",{style:{color:"#d8b4fe",fontWeight:700,fontSize:"1rem"}},avg(u.entries.map(e=>e.screen_time))+"h"),E("div",{style:{color:"#94a3b8",fontSize:"0.8rem"}},t("avgScreen")))
                 )
-              : E("p",{style:{color:"#64748b",fontSize:"0.85rem"}}, "No entries yet.")
+              :E("p",{style:{color:"#64748b",fontSize:"0.85rem"}},t("noEntriesYet"))
           ))
         )
       )
     ),
-    E("div",{className:"footer"},"Desenvolvido por: José Paulo Tavares")
+    E("div",{className:"footer"},t("developed"))
   );
 }
 
-// ── Main App ───────────────────────────────────────────────────────────────────
+/* ── App Root ─────────────────────────────────────────────────────────────── */
 function App() {
-  const [user, setUser] = useState(() => {
-    const t = localStorage.getItem("sd_token");
-    const u = localStorage.getItem("sd_user");
-    return t && u ? {...JSON.parse(u), token:t} : null;
+  const [user,setUser]=useState(()=>{
+    const tk=localStorage.getItem("sd_token"), u=localStorage.getItem("sd_user");
+    return tk&&u?{...JSON.parse(u),token:tk}:null;
   });
+  const [lang,setLang]=useState(()=>localStorage.getItem("sd_lang")||"en");
 
-  const logout = () => {
-    localStorage.removeItem("sd_token");
-    localStorage.removeItem("sd_user");
-    setUser(null);
-  };
+  useEffect(()=>{ localStorage.setItem("sd_lang",lang); },[lang]);
 
-  if (!user) return React.createElement(AuthScreen, { onLogin: data => setUser(data) });
-  const u = {...user, logout};
-  if (user.isAdmin) return React.createElement(AdminApp,    { user:u });
-  return React.createElement(StudentApp, { user:u });
+  const t=key=>(T[lang]&&T[lang][key]!=null)?T[lang][key]:(T.en[key]||key);
+
+  const logout=()=>{ localStorage.removeItem("sd_token"); localStorage.removeItem("sd_user"); setUser(null); };
+
+  return React.createElement(LangCtx.Provider,{value:{lang,t}},
+    React.createElement(LanguageSelector,{lang,setLang}),
+    user
+      ?(user.isAdmin
+          ?React.createElement(AdminApp,{user:{...user,logout}})
+          :React.createElement(StudentApp,{user:{...user,logout}}))
+      :React.createElement(AuthScreen,{onLogin:data=>setUser(data)})
+  );
 }
 
-ReactDOM.render(React.createElement(App), document.getElementById("root"));
+ReactDOM.render(React.createElement(App),document.getElementById("root"));
 </script>
 </body>
 </html>
