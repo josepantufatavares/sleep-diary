@@ -42,7 +42,7 @@
   .footer { text-align:center; padding:10px 16px; color:#64748b; font-size:0.78rem; border-top:1px solid #1e293b; margin-top:12px; }
 
   /* Language Selector */
-  .lang-selector { position:fixed; top:12px; right:16px; z-index:1000; }
+  .lang-selector { position:relative; }
   .lang-btn {
     display:flex; align-items:center; gap:6px;
     background:rgba(30,41,59,0.95); border:1px solid #475569;
@@ -60,6 +60,7 @@
     min-width:168px; overflow:hidden;
     box-shadow:0 8px 28px rgba(0,0,0,0.5);
     animation:ldFade 0.12s ease;
+    z-index:200;
   }
   @keyframes ldFade { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
   .lang-option {
@@ -402,7 +403,7 @@ const genInsights = (entries, t) => {
 };
 
 /* ── AuthScreen ───────────────────────────────────────────────────────────── */
-function AuthScreen({ onLogin }) {
+function AuthScreen({ onLogin, lang, setLang }) {
   const { t } = React.useContext(LangCtx);
   const [mode,setMode]=useState("login");
   const [form,setForm]=useState({username:"",password:"",confirm:"",secQ:0,secA:""});
@@ -449,6 +450,9 @@ function AuthScreen({ onLogin }) {
 
   const E=React.createElement;
   return E("div",{style:{minHeight:"100vh",background:"#0f172a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"16px"}},
+    E("div",{style:{position:"fixed",top:"12px",right:"16px",zIndex:1000}},
+      E(LanguageSelector,{lang,setLang})
+    ),
     E("div",{style:{fontSize:"3rem",marginBottom:"8px"}},"🌙"),
     E("h1",{style:{fontSize:"1.6rem",fontWeight:700,color:"#fff",marginBottom:"4px"}},t("appTitle")),
     E("p",{style:{color:"#94a3b8",fontSize:"0.95rem",marginBottom:"24px"}},t("appSubtitle")),
@@ -565,7 +569,7 @@ function AdminResetModal({ username, token, onClose }) {
 }
 
 /* ── StudentApp ───────────────────────────────────────────────────────────── */
-function StudentApp({ user }) {
+function StudentApp({ user, lang, setLang }) {
   const { t }=React.useContext(LangCtx);
   const [entries,setEntries]=useState([]);
   const [tab,setTab]=useState("log");
@@ -605,7 +609,8 @@ function StudentApp({ user }) {
         E("div",{style:{fontSize:"1.15rem",fontWeight:700,color:"#fff"}},"🌙 "+t("appTitle")),
         E("div",{style:{color:"#94a3b8",fontSize:"0.85rem"}},"@"+user.username)
       ),
-      E("div",{style:{display:"flex",gap:"8px"}},
+      E("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},
+        E(LanguageSelector,{lang,setLang}),
         E("button",{className:"btn-outline",onClick:()=>setShowPw(true)},t("changePw")),
         E("button",{className:"btn-outline",onClick:user.logout},t("logout"))
       )
@@ -717,7 +722,7 @@ function StudentApp({ user }) {
 }
 
 /* ── AdminApp ─────────────────────────────────────────────────────────────── */
-function AdminApp({ user }) {
+function AdminApp({ user, lang, setLang }) {
   const { t }=React.useContext(LangCtx);
   const [data,setData]=useState([]);
   const [tab,setTab]=useState("overview");
@@ -751,7 +756,10 @@ function AdminApp({ user }) {
         E("div",{style:{fontSize:"1.15rem",fontWeight:700,color:"#fff"}},t("adminPanel")),
         E("div",{style:{color:"#94a3b8",fontSize:"0.85rem"}},data.length+t("studentsReg"))
       ),
-      E("button",{className:"btn-outline",onClick:user.logout},t("logout"))
+      E("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},
+        E(LanguageSelector,{lang,setLang}),
+        E("button",{className:"btn-outline",onClick:user.logout},t("logout"))
+      )
     ),
     E("div",{style:{display:"flex",borderBottom:"2px solid #1e293b",background:"#0a0f1e",overflowX:"auto"}},
       TABS.map(([k,l])=>E("button",{key:k,className:"tab-btn"+(tab===k?" active":""),onClick:()=>setTab(k)},l))
@@ -904,12 +912,11 @@ function App() {
   const logout=()=>{ localStorage.removeItem("sd_token"); localStorage.removeItem("sd_user"); setUser(null); };
 
   return React.createElement(LangCtx.Provider,{value:{lang,t}},
-    React.createElement(LanguageSelector,{lang,setLang}),
     user
       ?(user.isAdmin
-          ?React.createElement(AdminApp,{user:{...user,logout}})
-          :React.createElement(StudentApp,{user:{...user,logout}}))
-      :React.createElement(AuthScreen,{onLogin:data=>setUser(data)})
+          ?React.createElement(AdminApp,{user:{...user,logout},lang,setLang})
+          :React.createElement(StudentApp,{user:{...user,logout},lang,setLang}))
+      :React.createElement(AuthScreen,{onLogin:data=>setUser(data),lang,setLang})
   );
 }
 
